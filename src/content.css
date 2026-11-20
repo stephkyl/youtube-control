@@ -14,6 +14,33 @@ html.ysess-locked body {
   display: none !important;
 }
 
+/* Réglage "aucune suggestion" : rien à côté, sous ou à la fin de la vidéo. */
+html.ysess-hide-related ytd-watch-next-secondary-results-renderer,
+html.ysess-hide-related ytd-watch-flexy #related,
+html.ysess-hide-related ytm-item-section-renderer[section-identifier="related-items"],
+html.ysess-hide-related .html5-endscreen,
+html.ysess-hide-related .ytp-endscreen-content,
+html.ysess-hide-related .ytp-ce-element {
+  display: none !important;
+}
+
+/* Réglage "suggestions qui tiennent" : la liste raccourcit sans être complétée. */
+html.ysess-freeze-related ytd-watch-next-secondary-results-renderer ytd-continuation-item-renderer {
+  display: none !important;
+}
+
+/* Dernier short : rien en dessous (ni aperçu du suivant, ni flèches), pas de défilement. */
+html.ysess-last-short ytd-reel-video-renderer[is-active] ~ ytd-reel-video-renderer,
+html.ysess-last-short .reel-video-in-sequence-new:has(ytd-reel-video-renderer[is-active]) ~ .reel-video-in-sequence-new,
+html.ysess-last-short .reel-video-in-sequence:has([is-active]) ~ .reel-video-in-sequence,
+html.ysess-last-short #navigation-button-down,
+html.ysess-last-short #navigation-button-up {
+  visibility: hidden !important;
+}
+html.ysess-last-short #shorts-inner-container {
+  overflow: hidden !important;
+}
+
 /* Quand il ne reste presque plus rien, inutile de charger des pages de suggestions vides. */
 html.ysess-scarce ytd-continuation-item-renderer {
   display: none !important;

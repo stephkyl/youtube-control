@@ -1,16 +1,26 @@
 'use strict';
 
+const t = (key, ...subs) => browser.i18n.getMessage(key, subs.map(String));
+const fmtVideos = (n) => (n === 0 ? t('videosNone') : n === 1 ? t('videosOne') : t('videosMany', n));
+const fmtMinutes = (ms) => t('minutesShort', Math.max(1, Math.ceil(ms / 60000)));
+
+document.documentElement.lang = browser.i18n.getUILanguage();
+document.title = t('extName');
+
 const app = document.getElementById('app');
 let session = null;
 let renderedKey = null;
 
-const esc = (s) =>
-  String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+// Construit l'interface sans innerHTML : aucun texte n'est interprété comme du HTML.
+function el(tag, props = {}, children = []) {
+  const node = document.createElement(tag);
+  Object.assign(node, props);
+  node.append(...children);
+  return node;
+}
 
-function fmtClock(ms) {
-  const s = Math.max(0, Math.ceil(ms / 1000));
-  const m = Math.floor(s / 60);
-  return `${m}:${String(s % 60).padStart(2, '0')}`;
+function settingsLink() {
+  return el('button', { className: 'link', textContent: t('popupSettings'), onclick: () => browser.runtime.openOptionsPage() });
 }
 
 function render() {
@@ -20,35 +30,40 @@ function render() {
   if (key !== renderedKey) {
     renderedKey = key;
     if (!running) {
-      app.innerHTML = `
-        <div class="eyebrow">Session YouTube</div>
-        <p class="muted">Aucune session en cours. YouTube reste fermé jusqu'à ce que tu en démarres une depuis la page YouTube.</p>
-        <button class="primary" id="open">Ouvrir YouTube</button>`;
-      document.getElementById('open').addEventListener('click', () => {
-        browser.tabs.create({ url: 'https://www.youtube.com/' });
-        window.close();
-      });
+      app.replaceChildren(
+        el('div', { className: 'eyebrow', textContent: t('extName') }),
+        el('p', { className: 'muted', textContent: t('popupIdle') }),
+        el('button', {
+          className: 'primary',
+          textContent: t('popupOpen'),
+          onclick: () => {
+            browser.tabs.create({ url: 'https://www.youtube.com/' });
+            window.close();
+          },
+        }),
+        settingsLink()
+      );
     } else {
-      app.innerHTML = `
-        <div class="eyebrow">${session.status === 'overtime' ? 'Temps écoulé' : 'Temps restant'}</div>
-        <p class="big" id="left"></p>
-        <p class="muted">sur ${session.durationMin} min · <span id="count"></span></p>
-        <div class="bar"><div id="bar"></div></div>
-        <p class="quote">« ${esc(session.intention)} »</p>
-        <button id="end">Terminer la session maintenant</button>`;
-      document.getElementById('end').addEventListener('click', () => {
-        browser.runtime.sendMessage({ type: 'END_SESSION', reason: 'manual' });
-      });
+      app.replaceChildren(
+        el('div', { className: 'eyebrow', textContent: t(session.status === 'overtime' ? 'popupTimeUp' : 'popupTimeLeft') }),
+        el('p', { className: 'big', id: 'left' }),
+        el('p', { className: 'muted', id: 'sub' }),
+        el('div', { className: 'bar' }, [el('div', { id: 'bar' })]),
+        el('p', { className: 'quote', textContent: t('quote', session.intention) }),
+        el('button', {
+          textContent: t('popupEnd'),
+          onclick: () => browser.runtime.sendMessage({ type: 'END_SESSION', reason: 'manual' }),
+        }),
+        settingsLink()
+      );
     }
   }
 
   if (running) {
     const total = session.endsAt - session.startedAt;
     const left = Math.max(0, session.endsAt - Date.now());
-    const n = session.videos.length;
-    document.getElementById('left').textContent =
-      session.status === 'overtime' ? 'Dernière vidéo' : fmtClock(left);
-    document.getElementById('count').textContent = `${n} vidéo${n > 1 ? 's' : ''}`;
+    document.getElementById('left').textContent = session.status === 'overtime' ? t('lastVideo') : fmtMinutes(left);
+    document.getElementById('sub').textContent = `${t('popupOf', session.durationMin)} · ${fmtVideos(session.videos.length)}`;
     document.getElementById('bar').style.width = `${(left / total) * 100}%`;
   }
 }

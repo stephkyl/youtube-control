@@ -10,20 +10,26 @@
   const FIT_TOLERANCE_MS = 5000;         // marge pour l'arrondi des durées affichées
   const END_SCREEN_TTL = 30 * 60 * 1000; // l'écran de fin reste affiché 30 min, puis formulaire
   const SCARCE_MS = 2 * 60 * 1000;       // en dessous : on arrête de charger des suggestions
+  const LAST_SHORT_THRESHOLD_MS = 2 * 60 * 1000; // short commencé à moins de 2 min de la fin → le dernier
 
   const html = document.documentElement;
   html.classList.add('ysess-pending');
 
   let session = null;
+  // watchSuggestions : 'fit' = suggestions qui tiennent dans la session (la liste raccourcit
+  // sans être complétée) ; 'hide' = aucune suggestion pendant la lecture.
+  const DEFAULT_SETTINGS = { watchSuggestions: 'fit' };
+  let settings = { ...DEFAULT_SETTINGS };
   let stateLoaded = false;
-  let dismissedEndFor = null; // id de session dont l'écran de fin a été fermé dans cet onglet
-  let tooLong = null;         // { videoId, videoMs, remainingMs }
+  let dismissedEndFor = null; // id de session dont l'écran de fin a été quitté dans cet onglet
+  let tooLong = null;        // { videoId, videoMs, remainingMs }
 
   let currentVideoId = null;
   let videoNavAt = 0;
   let checkedVideoId = null;
   let lastTime = 0;
-  let shortsFinished = false; // dernier short terminé pendant l'overtime
+  let shortsFinished = false; // dernier short terminé : plus rien ne doit jouer
+  let lastShortFor = null;    // id du short identifié comme le dernier de la session
 
   const now = () => Date.now();
   const isRunning = () => !!session && (session.status === 'active' || session.status === 'overtime');
@@ -38,6 +44,10 @@
 
   const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
+  // Traductions : _locales/en (par défaut) et _locales/fr, selon la langue de Firefox.
+  const t = (key, ...subs) => browser.i18n.getMessage(key, subs.map(String));
+  const fmtVideos = (n) => (n === 0 ? t('videosNone') : n === 1 ? t('videosOne') : t('videosMany', n));
+
   function parseTime(t) {
     const parts = t.split(':').map(Number);
     return parts.reduce((acc, n) => acc * 60 + n, 0) * 1000;
@@ -45,17 +55,15 @@
 
   function fmtSpent(ms) {
     const m = Math.max(1, Math.round(ms / 60000));
-    if (m < 60) return `${m} min`;
+    if (m < 60) return t('minutesShort', m);
     const h = Math.floor(m / 60);
     const r = m % 60;
-    return r ? `${h} h ${String(r).padStart(2, '0')}` : `${h} h`;
+    return r ? t('hoursMinutesShort', h, String(r).padStart(2, '0')) : t('hoursShort', h);
   }
 
-  function fmtLeft(ms) {
-    const s = Math.max(0, Math.ceil(ms / 1000));
-    if (s < 60) return `${s} s`;
-    return `${Math.ceil(s / 60)} min`;
-  }
+  // Toujours en minutes, même à la fin : pas de compte à rebours en secondes.
+  const minutesLeft = (ms) => Math.max(1, Math.ceil(ms / 60000));
+  const fmtLeft = (ms) => t('minutesShort', minutesLeft(ms));
 
   function pageType() {
     const p = location.pathname;
@@ -202,6 +210,7 @@
       checkedVideoId = null;
       lastTime = 0;
       shortsFinished = false;
+      lastShortFor = null;
       if (tooLong && tooLong.videoId !== id) tooLong = null;
     }
     if (!id) return;
@@ -218,18 +227,24 @@
       }
     }
 
-    // Shorts en overtime : on laisse finir la boucle en cours, puis on s'arrête.
-    if (type === 'shorts' && session.status === 'overtime' && !shortsFinished) {
-      if (v.currentTime + 0.5 < lastTime) {
-        v.pause();
-        shortsFinished = true;
-      }
+    if (type === 'shorts' && checkedVideoId === id && !shortsFinished) {
+      // Temps écoulé alors qu'on n'a pas encore défilé : le short en cours devient le dernier.
+      if (lastShortFor !== id && session.status === 'overtime') lastShortFor = id;
+      // Filet de sécurité si 'timeupdate' a raté la fin : la boucle a redémarré.
+      if (lastShortFor === id && v.currentTime + 0.5 < lastTime) finishLastShort(v);
     }
     if (shortsFinished && !v.paused) v.pause();
     lastTime = v.currentTime;
   }
 
   function evaluateVideo(type, id, v) {
+    if (type === 'shorts') {
+      // Un short n'est jamais coupé ni refusé. S'il commence à moins de 2 min de la fin
+      // (ou après), c'est le dernier : lu en entier, même au-delà de la session.
+      if (session.status === 'overtime' || remainingMs() < LAST_SHORT_THRESHOLD_MS) lastShortFor = id;
+      send({ type: 'VIDEO_STARTED', videoId: id });
+      return;
+    }
     const rate = v.playbackRate || 1;
     const videoMs = Math.max(0, ((v.duration - v.currentTime) * 1000) / rate);
     const rem = remainingMs();
@@ -239,13 +254,56 @@
       return;
     }
     v.pause();
-    if (type === 'shorts') {
-      // Pas de coupure au milieu d'un short : le précédent était simplement le dernier.
-      send({ type: 'END_SESSION', reason: 'shorts' });
-    } else {
-      tooLong = { videoId: id, videoMs, remainingMs: rem };
-    }
+    tooLong = { videoId: id, videoMs, remainingMs: rem };
   }
+
+  // --- Dernier short ----------------------------------------------------------
+  // À moins de 2 min de la fin, le défilement reste possible : le short suivant sur
+  // lequel on arrive est le dernier. Pendant celui-ci, rien n'apparaît en dessous,
+  // le défilement est bloqué, et l'écran de fin s'affiche dès qu'il se termine.
+
+  function finishLastShort(v) {
+    if (shortsFinished) return;
+    shortsFinished = true;
+    v.pause();
+    send({ type: 'END_SESSION', reason: 'shorts' });
+  }
+
+  const inLastShortMode = () => html.classList.contains('ysess-last-short');
+
+  // Fin du dernier short : on l'arrête juste avant qu'il ne reparte en boucle.
+  document.addEventListener(
+    'timeupdate',
+    (e) => {
+      if (!e.isTrusted || shortsFinished || !lastShortFor || lastShortFor !== currentVideoId) return;
+      if (pageType() !== 'shorts') return;
+      const v = getMainVideo('shorts');
+      if (e.target !== v || !Number.isFinite(v.duration)) return;
+      if (v.duration - v.currentTime < 0.35) finishLastShort(v);
+    },
+    true
+  );
+
+  // Bloque le passage au short suivant (molette, tactile, clavier), sauf dans le panneau des commentaires.
+  const blockFeedScroll = (e) => {
+    if (!inLastShortMode()) return;
+    const target = e.target instanceof Element ? e.target : null;
+    if (target && target.closest('ytd-engagement-panel-section-list-renderer, [data-ysess]')) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+  };
+  window.addEventListener('wheel', blockFeedScroll, { capture: true, passive: false });
+  window.addEventListener('touchmove', blockFeedScroll, { capture: true, passive: false });
+  window.addEventListener(
+    'keydown',
+    (e) => {
+      if (!['ArrowDown', 'ArrowUp', 'PageDown', 'PageUp'].includes(e.key)) return;
+      const target = e.target instanceof Element ? e.target : null;
+      if (target && target.closest('input, textarea, [contenteditable=""], [contenteditable="true"]')) return;
+      blockFeedScroll(e);
+    },
+    true
+  );
 
   function disableAutoplay() {
     const btn = document.querySelector('.ytp-autonav-toggle-button[aria-checked="true"]');
@@ -328,21 +386,21 @@
       stopTimer();
       screen.innerHTML = `
         <div class="card">
-          <div class="eyebrow">Session YouTube</div>
-          <h1>Avant d'entrer, pose ton intention.</h1>
-          <p class="lead">YouTube reste fermé tant qu'aucune session n'est en cours. Choisis une durée et écris ce que tu viens y faire.</p>
+          <div class="eyebrow">${esc(t('startEyebrow'))}</div>
+          <h1>${esc(t('startTitle'))}</h1>
+          <p class="lead">${esc(t('startLead'))}</p>
           <div class="field">
-            <div class="label">Durée de la session</div>
+            <div class="label">${esc(t('startDurationLabel'))}</div>
             <div class="chips">
-              ${DURATIONS.map((d) => `<button type="button" class="chip" data-d="${d}" aria-pressed="${d === duration}">${d} min</button>`).join('')}
+              ${DURATIONS.map((d) => `<button type="button" class="chip" data-d="${d}" aria-pressed="${d === duration}">${esc(t('minutesShort', d))}</button>`).join('')}
             </div>
           </div>
           <div class="field">
-            <label class="label" for="intent">Ce que je viens faire</label>
-            <textarea id="intent" rows="2" maxlength="200" placeholder="Ex. : regarder le tuto sur le réglage du dérailleur, puis fermer."></textarea>
+            <label class="label" for="intent">${esc(t('startIntentionLabel'))}</label>
+            <textarea id="intent" rows="2" maxlength="200" placeholder="${esc(t('startIntentionPlaceholder'))}"></textarea>
             <div class="hint" id="hint"></div>
           </div>
-          <button type="button" class="primary" id="go" disabled>Je m'engage</button>
+          <button type="button" class="primary" id="go" disabled>${esc(t('startCommit'))}</button>
         </div>`;
 
       const $ = (s) => screen.querySelector(s);
@@ -351,7 +409,7 @@
       const update = () => {
         intention = ta.value;
         const missing = MIN_INTENTION - intention.trim().length;
-        $('#hint').textContent = missing > 0 ? `Encore ${missing} caractère${missing > 1 ? 's' : ''}.` : '';
+        $('#hint').textContent = missing <= 0 ? '' : missing === 1 ? t('startHintOne') : t('startHintMany', missing);
         $('#go').disabled = !(duration && missing <= 0);
       };
       for (const chip of screen.querySelectorAll('.chip')) {
@@ -370,9 +428,9 @@
       stopTimer();
       screen.innerHTML = `
         <div class="card center">
-          <div class="eyebrow">Un instant</div>
-          <h1>${duration} minutes pour :</h1>
-          <p class="quote">« ${esc(intention.trim())} »</p>
+          <div class="eyebrow">${esc(t('confirmEyebrow'))}</div>
+          <h1>${esc(t('confirmTitle', duration))}</h1>
+          <p class="quote" id="quote"></p>
           <div class="ring">
             <svg viewBox="0 0 120 120" aria-hidden="true">
               <circle class="ring-bg" cx="60" cy="60" r="52"/>
@@ -380,12 +438,14 @@
             </svg>
             <span id="count">${COUNTDOWN_S}</span>
           </div>
-          <p class="lead small" id="msg">Respire. Est-ce vraiment ce que tu veux faire maintenant ?</p>
-          <button type="button" class="primary" id="start" disabled>Patiente…</button>
-          <button type="button" class="link" id="back">Modifier</button>
+          <p class="lead small" id="msg">${esc(t('confirmPrompt'))}</p>
+          <button type="button" class="primary" id="start" disabled>${esc(t('confirmWait'))}</button>
+          <button type="button" class="link" id="back">${esc(t('confirmBack'))}</button>
         </div>`;
 
       const $ = (s) => screen.querySelector(s);
+      // textContent : le texte saisi n'est jamais interprété comme du HTML.
+      $('#quote').textContent = t('quote', intention.trim());
       let left = COUNTDOWN_S;
       timer = setInterval(() => {
         left -= 1;
@@ -393,8 +453,8 @@
         if (left <= 0) {
           stopTimer();
           $('#start').disabled = false;
-          $('#start').textContent = 'Commencer la session';
-          $('#msg').textContent = 'Le minuteur démarre dès que tu cliques.';
+          $('#start').textContent = t('confirmStart');
+          $('#msg').textContent = t('confirmReady');
           screen.querySelector('.ring').classList.add('done');
         }
       }, 1000);
@@ -418,19 +478,10 @@
   // --- Fin de session ---------------------------------------------------------
   function buildEnd(screen) {
     const s = session;
-    const n = (s.videos || []).length;
     const early = s.endReason === 'manual';
-    const title = early
-      ? pick(["S'arrêter avant la fin, c'est fort.", 'Tu as choisi de t’arrêter. Bien vu.'])
-      : pick(['Session terminée. Bien joué.', "C'est bouclé.", 'Mission accomplie.', 'Et voilà, terminé en beauté.']);
-    const next = pick([
-      'Lève-toi, étire-toi, respire un grand coup.',
-      "Un verre d'eau, et on passe à la suite.",
-      'Le reste de ta journée t’attend.',
-      "Ferme l'onglet tant que c'est facile.",
-      'Tu as fait ce que tu avais prévu.',
-    ]);
-    const videos = n === 0 ? 'Aucune vidéo' : `${n} vidéo${n > 1 ? 's' : ''}`;
+    const title = early ? t(pick(['endEarly1', 'endEarly2'])) : t(pick(['endTitle1', 'endTitle2', 'endTitle3', 'endTitle4']));
+    const next = t(pick(['endNext1', 'endNext2', 'endNext3', 'endNext4', 'endNext5']));
+    const stats = t('endStats', fmtVideos((s.videos || []).length), fmtSpent(s.endedAt - s.startedAt), s.durationMin);
     const particles = Array.from({ length: 18 }, () => {
       const left = Math.round(Math.random() * 100);
       const delay = (Math.random() * 4).toFixed(2);
@@ -447,14 +498,16 @@
           <path class="check-mark" d="M38 62 L54 77 L84 45"/>
         </svg>
         <h1 class="fade d1">${esc(title)}</h1>
-        <p class="stats fade d2">${videos} · ${fmtSpent(s.endedAt - s.startedAt)} sur ${s.durationMin} min prévues</p>
-        <p class="quote fade d3">Ton intention : « ${esc(s.intention)} »</p>
+        <p class="stats fade d2">${esc(stats)}</p>
+        <p class="quote fade d3" id="quote"></p>
         <p class="lead fade d4">${esc(next)}</p>
-        <button type="button" class="primary fade d5" id="close">Fermer l'onglet</button>
-        <button type="button" class="link fade d5" id="again">Ouvrir une nouvelle session</button>
+        <button type="button" class="primary fade d5" id="close">${esc(t('endClose'))}</button>
+        <button type="button" class="link fade d5" id="again">${esc(t('endAgain'))}</button>
       </div>`;
 
+    screen.querySelector('#quote').textContent = t('endIntention', s.intention);
     screen.querySelector('#close').addEventListener('click', () => send({ type: 'CLOSE_TAB' }));
+    // Mène au formulaire de démarrage (intention + temps de réflexion), pas directement à YouTube.
     screen.querySelector('#again').addEventListener('click', () => {
       dismissedEndFor = s.id;
       render();
@@ -463,20 +516,17 @@
 
   // --- Vidéo trop longue ------------------------------------------------------
   function buildTooLong(screen) {
-    const t = tooLong;
+    const info = tooLong;
     const overtime = session.status !== 'active';
+    const detail = overtime ? t('tooLongOvertime') : t('tooLongDetail', fmtLeft(info.videoMs), fmtLeft(info.remainingMs));
     screen.innerHTML = `
       <div class="card center">
-        <div class="eyebrow">Hors session</div>
-        <h1>Cette vidéo ne tient pas dans ta session.</h1>
-        <p class="lead">${
-          overtime
-            ? 'Le temps de ta session est écoulé.'
-            : `Elle dure encore ${fmtLeft(t.videoMs)}, il te reste ${fmtLeft(t.remainingMs)}.`
-        }</p>
+        <div class="eyebrow">${esc(t('tooLongEyebrow'))}</div>
+        <h1>${esc(t('tooLongTitle'))}</h1>
+        <p class="lead">${esc(detail)}</p>
         <div class="row">
-          <button type="button" class="secondary" id="back">Revenir en arrière</button>
-          <button type="button" class="primary" id="home">Suggestions</button>
+          <button type="button" class="secondary" id="back">${esc(t('tooLongBack'))}</button>
+          <button type="button" class="primary" id="home">${esc(t('tooLongHome'))}</button>
         </div>
       </div>`;
     screen.querySelector('#back').addEventListener('click', () => history.back());
@@ -504,7 +554,15 @@
       html.appendChild(host);
       pill = { host, txt: root.querySelector('.txt'), box: root.querySelector('.pill') };
     }
-    const text = session.status === 'overtime' ? 'Dernière vidéo' : `${fmtLeft(remainingMs())} restantes`;
+    const m = minutesLeft(remainingMs());
+    const onLastShort = pageType() === 'shorts' && !!lastShortFor && lastShortFor === currentVideoId;
+    const text = onLastShort
+      ? t('lastShort')
+      : session.status === 'overtime'
+        ? t('lastVideo')
+        : m === 1
+          ? t('pillLeftOne')
+          : t('pillLeftMany', m);
     if (pill.txt.textContent !== text) pill.txt.textContent = text;
     pill.box.classList.toggle('low', session.status === 'overtime' || remainingMs() < 5 * 60 * 1000);
   }
@@ -527,7 +585,15 @@
     if (!stateLoaded) return;
     tickCount += 1;
 
-    if (isRunning()) {
+    const running = isRunning();
+    html.classList.toggle('ysess-hide-related', running && settings.watchSuggestions === 'hide');
+    html.classList.toggle('ysess-freeze-related', running && settings.watchSuggestions === 'fit');
+    html.classList.toggle(
+      'ysess-last-short',
+      running && pageType() === 'shorts' && !!lastShortFor && lastShortFor === currentVideoId
+    );
+
+    if (running) {
       trackVideo();
       disableAutoplay();
       if (tickCount % 4 === 0) filterCards(); // les durées baissent avec le temps
@@ -545,8 +611,9 @@
     updatePill();
   }
 
-  browser.storage.local.get('session').then((r) => {
+  browser.storage.local.get(['session', 'settings']).then((r) => {
     session = r.session || null;
+    settings = { ...DEFAULT_SETTINGS, ...r.settings };
     stateLoaded = true;
     render();
     filterCards();
@@ -554,7 +621,12 @@
   });
 
   browser.storage.onChanged.addListener((changes, area) => {
-    if (area !== 'local' || !changes.session) return;
+    if (area !== 'local') return;
+    if (changes.settings) {
+      settings = { ...DEFAULT_SETTINGS, ...changes.settings.newValue };
+      render();
+    }
+    if (!changes.session) return;
     const prev = session;
     session = changes.session.newValue || null;
     if (!prev || !session || prev.id !== session.id) {
