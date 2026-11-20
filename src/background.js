@@ -1,7 +1,8 @@
 'use strict';
 
-// Source de vérité de la session. Seul ce script écrit la session, le bilan du jour
-// et l'historique dans storage.local (les réglages sont écrits par la page de réglages).
+// Source de vérité de la session. Seul ce script écrit la session et l'historique dans
+// storage.local (les réglages sont écrits par la popup ; la page Historique peut
+// effacer l'historique).
 //
 // session = {
 //   id, intention, durationMin,
@@ -11,13 +12,11 @@
 //   videos: [videoId],          // vidéos lancées pendant la session
 //   shorts: [videoId],          // shorts lancés pendant la session
 //   endedAt, endReason,         // 'time' | 'last-video' | 'shorts' | 'manual' | 'overtime-cap'
-//   todayMs, todaySessions      // bilan du jour figé à la fin de la session (écran de fin)
 // }
 //
-// daily = { day: 'AAAA-MM-JJ', totalMs, sessions }  // remis à zéro à minuit (heure locale)
 // history = [entrée, …]  // sessions terminées, la plus récente en premier (voir shared.js)
 
-const { config, MSG, dayKey, midnightOf, isValidVideoId } = YS;
+const { config, MSG, isValidVideoId } = YS;
 
 const LAST_VIDEO_THRESHOLD_MS = 3 * 60 * 1000; // vidéo terminée avec < 3 min restantes → fin
 const OVERTIME_CAP_MS = 30 * 60 * 1000; // garde-fou si une vidéo s'éternise après l'heure
@@ -27,36 +26,27 @@ const TICK_MS = 1000;
 
 let session = null;
 const ready = browser.storage.local.get('session').then((r) => {
-  session = YS.normalizeSession(r.session);
+  session = r.session ?? null;
 });
 
 const save = () => browser.storage.local.set({ session });
 
 // ---------------------------------------------------------------------------
-// Bilan du jour et historique
+// Historique
 // ---------------------------------------------------------------------------
-
-// Ajoute une session terminée au bilan du jour. Seule la partie après minuit compte.
-function addToDaily(prev, s) {
-  const day = dayKey(s.endedAt);
-  const base = prev?.day === day ? prev : { day, totalMs: 0, sessions: 0 };
-  const from = Math.max(s.startedAt, midnightOf(s.endedAt));
-  return { day, totalMs: base.totalMs + Math.max(0, s.endedAt - from), sessions: base.sessions + 1 };
-}
 
 function addToHistory(prev, s) {
   const entry = {
     id: s.id,
     startedAt: s.startedAt,
     endedAt: s.endedAt,
-    durationMin: s.durationMin,
     intention: s.intention,
     mode: s.mode,
     videos: s.videos.length,
     shorts: s.shorts.length,
     endReason: s.endReason,
   };
-  const others = YS.normalizeHistory(prev).filter((h) => h.id !== s.id);
+  const others = (prev ?? []).filter((h) => h.id !== s.id);
   return [entry, ...others].slice(0, MAX_HISTORY);
 }
 
@@ -92,12 +82,10 @@ async function startSession({ durationMin, intention, mode }) {
 
 async function endSession(reason, endedAt = Date.now()) {
   if (!session || session.status === 'ended') return session;
-  const ended = { ...session, status: 'ended', endedAt, endReason: reason };
-  const stored = await browser.storage.local.get(['daily', 'history']);
-  const daily = addToDaily(stored.daily, ended);
-  const history = addToHistory(stored.history, ended);
-  session = { ...ended, todayMs: daily.totalMs, todaySessions: daily.sessions };
-  await browser.storage.local.set({ session, daily, history });
+  session = { ...session, status: 'ended', endedAt, endReason: reason };
+  const stored = await browser.storage.local.get('history');
+  // Session et historique écrits ensemble : l'écran de fin reçoit les deux en même temps.
+  await browser.storage.local.set({ session, history: addToHistory(stored.history, session) });
   return session;
 }
 
@@ -142,8 +130,6 @@ setInterval(tick, TICK_MS);
 // ---------------------------------------------------------------------------
 // Messages
 // ---------------------------------------------------------------------------
-const isExtensionPage = (sender) => String(sender.url || '').startsWith(browser.runtime.getURL(''));
-
 const handlers = {
   [MSG.START_SESSION]: (msg) => startSession(msg),
 
@@ -167,10 +153,6 @@ const handlers = {
 
   // Une page web ne peut pas ouvrir une page de l'extension : le script injecté passe par ici.
   [MSG.OPEN_STATS]: () => browser.tabs.create({ url: browser.runtime.getURL(config.STATS_PAGE) }).then(() => undefined),
-
-  // Réservé aux pages de l'extension (pas aux scripts injectés dans YouTube).
-  [MSG.CLEAR_HISTORY]: (_msg, sender) =>
-    isExtensionPage(sender) ? browser.storage.local.remove(['history', 'daily']) : undefined,
 };
 
 browser.runtime.onMessage.addListener((msg, sender) => {

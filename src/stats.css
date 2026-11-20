@@ -11,7 +11,7 @@
   --danger: var(--ys-danger);
 }
 @media (prefers-color-scheme: light) {
-  :root:not([data-theme="dark"]) {
+  :root {
     --bg: #f6f5f1;
     --surface: #ffffff;
     --border: rgba(16, 18, 26, .1);
@@ -21,16 +21,6 @@
     --tag-border: rgba(16, 18, 26, .18);
     --danger: #b3261e;
   }
-}
-:root[data-theme="light"] {
-  --bg: #f6f5f1;
-  --surface: #ffffff;
-  --border: rgba(16, 18, 26, .1);
-  --text: #1b1d27;
-  --muted: #5d6478;
-  --quote: #7a5a12;
-  --tag-border: rgba(16, 18, 26, .18);
-  --danger: #b3261e;
 }
 
 * { box-sizing: border-box; }

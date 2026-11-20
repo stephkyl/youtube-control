@@ -6,7 +6,23 @@
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
-  <main id="app"></main>
+  <main>
+    <div id="app"></div>
+    <details class="settings">
+      <summary data-i18n="popupSettings"></summary>
+      <fieldset>
+        <legend data-i18n="optWatchLegend"></legend>
+        <label class="option">
+          <input type="radio" name="watchSuggestions" value="fit">
+          <span><strong data-i18n="optFitTitle"></strong><small data-i18n="optFitDesc"></small></span>
+        </label>
+        <label class="option">
+          <input type="radio" name="watchSuggestions" value="hide">
+          <span><strong data-i18n="optHideTitle"></strong><small data-i18n="optHideDesc"></small></span>
+        </label>
+      </fieldset>
+    </details>
+  </main>
   <script src="shared.js"></script>
   <script src="popup.js"></script>
 </body>

@@ -13,11 +13,11 @@ Extension Firefox qui transforme YouTube en sessions courtes et intentionnelles.
 - **Fin de session** : un écran de clôture s'affiche avec une animation, l'intention de départ et des statistiques : la durée réelle de la session, le temps total depuis minuit (et le nombre de sessions), et le nombre de vidéos et/ou de shorts lancés. Il n'y a pas de bouton « encore 5 min ». Le lien « Ouvrir une nouvelle session » ramène au formulaire de démarrage complet (intention + temps de réflexion).
 - **Langues** : anglais par défaut, français si Firefox est en français (`_locales/`).
 - Une pastille en bas à gauche indique le temps restant, en minutes. Au survol, un bouton « Terminer » permet d'arrêter la session, après une confirmation dans la pastille. La popup de l'extension permet aussi de terminer la session plus tôt, sans confirmation.
-- **Historique** : chaque session terminée est enregistrée localement (500 au maximum) avec son intention, sa durée et le nombre de vidéos et de shorts. L'écran de fin liste les sessions du jour. L'historique complet, groupé par jour, s'ouvre depuis l'écran de fin ou depuis la popup (« Historique »), et peut y être effacé.
+- **Historique** : chaque session terminée est enregistrée localement (500 au maximum) avec son intention, sa durée et le nombre de vidéos et de shorts. L'historique, groupé par jour, s'ouvre depuis l'écran de fin ou depuis la popup (« Historique »), et peut y être effacé. Le bilan du jour (écran de fin, popup) est calculé à partir de cet historique.
 
 ## Réglages
 
-Accessibles depuis la popup (lien « Réglages ») ou depuis `about:addons`.
+Dans la popup de l'extension, section repliable « Réglages ». Un changement s'applique aussitôt.
 
 - **Suggestions pendant une vidéo** :
   - *Seulement celles qui tiennent dans la session* (par défaut) : les suggestions trop longues disparaissent au fil de la session, et YouTube n'en charge pas d'autres pour les remplacer.
@@ -41,7 +41,7 @@ Le module reste chargé jusqu'au redémarrage de Firefox.
 
 - `src/shared.js` : constantes, types de messages et utilitaires communs à tous les scripts (objet `YS`).
 - `src/theme.css` : palette de couleurs commune (variables `--ys-*`).
-- `src/background.js` : état de la session, minuteur, clôture, bilan du jour et historique.
+- `src/background.js` : état de la session, minuteur, clôture et historique.
 - `src/content/` : scripts injectés dans YouTube, chargés dans cet ordre (objet `YSC`) :
   - `core.js` : délais et seuils, état partagé, accès au lecteur ;
   - `styles.js` : styles des écrans et de la pastille ;
@@ -52,6 +52,5 @@ Le module reste chargé jusqu'au redémarrage de Firefox.
   - `pill.js` : pastille de temps restant ;
   - `main.js` : point d'entrée, boucle de rafraîchissement.
 - `src/content.css` : règles de masquage, pilotées par des classes et attributs posés par les scripts.
-- `src/popup.*` : temps restant, bilan du jour et bouton d'arrêt anticipé.
+- `src/popup.*` : temps restant, bilan du jour, bouton d'arrêt anticipé et réglages.
 - `src/stats.*` : page d'historique des sessions.
-- `src/options.*` : réglages.

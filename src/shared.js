@@ -1,40 +1,35 @@
 'use strict';
 
 // Constantes et utilitaires partagés par tous les scripts de l'extension :
-// arrière-plan, scripts injectés dans YouTube, popup, historique, réglages.
+// arrière-plan, scripts injectés dans YouTube, popup, historique.
 // eslint-disable-next-line no-var
 var YS = (() => {
   // --- Constantes -------------------------------------------------------------
-  const config = Object.freeze({
+  const config = {
     MIN_DURATION: 1, // minutes
-    MAX_DURATION: 180,
+    MAX_DURATION: 1440, // minutes, 1 jour max
     MIN_INTENTION: 10, // caractères
     MAX_INTENTION: 200,
-    MODES: Object.freeze(['all', 'long']), // 'all' = shorts et vidéos ; 'long' = vidéos longues uniquement
+    MODES: ['all', 'long'], // 'all' = shorts et vidéos ; 'long' = vidéos longues uniquement
     // watchSuggestions : 'fit' = suggestions qui tiennent dans la session (la liste raccourcit
     // sans être complétée) ; 'hide' = aucune suggestion pendant la lecture.
-    DEFAULT_SETTINGS: Object.freeze({ watchSuggestions: 'fit' }),
-    YOUTUBE_URLS: Object.freeze(['*://www.youtube.com/*', '*://m.youtube.com/*']),
+    DEFAULT_SETTINGS: { watchSuggestions: 'fit' },
+    YOUTUBE_URLS: ['*://www.youtube.com/*', '*://m.youtube.com/*'],
     STATS_PAGE: 'src/stats.html',
-  });
+  };
 
   // Types des messages échangés entre les scripts.
-  const MSG = Object.freeze({
+  const MSG = {
     START_SESSION: 'START_SESSION',
     END_SESSION: 'END_SESSION',
     VIDEO_STARTED: 'VIDEO_STARTED',
     VIDEO_ENDED: 'VIDEO_ENDED',
     CLOSE_TAB: 'CLOSE_TAB',
     OPEN_STATS: 'OPEN_STATS',
-    CLEAR_HISTORY: 'CLEAR_HISTORY',
     IS_PLAYING: 'IS_PLAYING', // arrière-plan → onglets YouTube
-  });
+  };
 
   // --- Données stockées -------------------------------------------------------
-  // Les sessions enregistrées par une version précédente n'ont pas tous les champs :
-  // on complète une fois à la lecture, pour que le reste du code puisse s'y fier.
-  const normalizeSession = (s) => (s ? { mode: 'all', videos: [], shorts: [], ...s } : null);
-  const normalizeHistory = (h) => (Array.isArray(h) ? h : []);
   const withDefaultSettings = (s) => ({ ...config.DEFAULT_SETTINGS, ...s });
 
   // Les identifiants viennent de la page (URL, lecteur) : on n'accepte que le format YouTube.
@@ -102,26 +97,23 @@ var YS = (() => {
   }
 
   // --- Historique -------------------------------------------------------------
-  // Entrée d'historique : { id, startedAt, endedAt, durationMin, intention, mode,
-  //                         videos, shorts, endReason }  (videos/shorts = nombres)
-  function sessionRowHtml(h, { current = false } = {}) {
-    const meta = [fmtClock(h.startedAt), fmtSpent(h.endedAt - h.startedAt), ...fmtCounts(h.videos, h.shorts)];
-    const tags = [];
-    if (current) tags.push(t('histCurrent'));
-    if (h.mode === 'long') tags.push(t('modeLong'));
-    if (h.endReason === 'manual') tags.push(t('histEarly'));
-    return `<li class="hist-row${current ? ' current' : ''}">
-      <div class="hist-meta">${esc(meta.join(' · '))}${tags.map((x) => ` <span class="hist-tag">${esc(x)}</span>`).join('')}</div>
-      <div class="hist-intent">${esc(t('quote', h.intention))}</div>
-    </li>`;
+  // Entrée d'historique : { id, startedAt, endedAt, intention, mode, videos, shorts, endReason }
+  // (videos/shorts = nombres), la plus récente en premier.
+
+  // Temps passé et nombre de sessions depuis `from` (ex. minuit) : seule la partie de
+  // chaque session après cet instant compte (session à cheval sur minuit).
+  function totalsSince(history, from) {
+    const rows = history.filter((h) => h.endedAt > from);
+    const ms = rows.reduce((acc, h) => acc + h.endedAt - Math.max(h.startedAt, from), 0);
+    return { ms, sessions: rows.length };
   }
 
   return {
     config, MSG,
-    normalizeSession, normalizeHistory, withDefaultSettings, isValidVideoId,
+    withDefaultSettings, isValidVideoId,
     t, plural, uiLang, esc,
     DAY_MS, dayKey, midnightOf, fmtClock, fmtDayLabel,
     fmtSpent, minutesLeft, fmtLeft, countsToShow, fmtCounts,
-    sessionRowHtml,
+    totalsSince,
   };
 })();

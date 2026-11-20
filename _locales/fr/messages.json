@@ -89,38 +89,14 @@
   "confirmBack": {
     "message": "Modifier"
   },
-  "endTitle1": {
+  "endTitle": {
     "message": "Session terminée. Bien joué."
   },
-  "endTitle2": {
-    "message": "C'est bouclé."
-  },
-  "endTitle3": {
-    "message": "Mission accomplie."
-  },
-  "endTitle4": {
-    "message": "Et voilà, terminé en beauté."
-  },
-  "endEarly1": {
+  "endEarly": {
     "message": "S'arrêter avant la fin, c'est fort."
   },
-  "endEarly2": {
-    "message": "Tu as choisi de t'arrêter. Bien vu."
-  },
-  "endNext1": {
+  "endNext": {
     "message": "Lève-toi, étire-toi, respire un grand coup."
-  },
-  "endNext2": {
-    "message": "Un verre d'eau, et on passe à la suite."
-  },
-  "endNext3": {
-    "message": "Le reste de ta journée t'attend."
-  },
-  "endNext4": {
-    "message": "Ferme l'onglet tant que c'est facile."
-  },
-  "endNext5": {
-    "message": "Tu as fait ce que tu avais prévu."
   },
   "videosNone": {
     "message": "Aucune vidéo"
@@ -173,14 +149,8 @@
   "pillNo": {
     "message": "Continuer"
   },
-  "endTodaySessions": {
-    "message": "Sessions du jour"
-  },
   "endAllHistory": {
     "message": "Tout l'historique"
-  },
-  "histCurrent": {
-    "message": "celle-ci"
   },
   "histEarly": {
     "message": "arrêtée plus tôt"
@@ -275,12 +245,6 @@
   "popupEnd": {
     "message": "Terminer la session maintenant"
   },
-  "optionsPageTitle": {
-    "message": "Réglages · Session YouTube"
-  },
-  "optionsTitle": {
-    "message": "Réglages"
-  },
   "optWatchLegend": {
     "message": "Suggestions pendant une vidéo"
   },
@@ -295,8 +259,5 @@
   },
   "optHideDesc": {
     "message": "Rien à côté, sous ou à la fin de la vidéo."
-  },
-  "optSaved": {
-    "message": "Enregistré. Appliqué immédiatement."
   }
 }

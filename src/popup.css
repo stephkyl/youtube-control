@@ -30,3 +30,17 @@ button.link {
   width: auto; border: 0; background: none; color: var(--ys-muted); font-weight: 400; font-size: 13px;
   text-decoration: underline; text-underline-offset: 3px; margin-top: 8px; padding: 6px;
 }
+
+/* Réglages : section repliable sous le contenu principal. */
+.settings { margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,.08); }
+.settings summary { cursor: pointer; color: var(--ys-muted); font-size: 13px; text-align: center; }
+.settings fieldset { border: 0; padding: 0; margin: 10px 0 0; }
+.settings legend { font-size: 12px; font-weight: 600; color: var(--ys-label); margin-bottom: 8px; padding: 0; }
+.option {
+  display: flex; gap: 8px; align-items: flex-start; padding: 8px 10px; margin-bottom: 6px;
+  border-radius: 10px; cursor: pointer; border: 1px solid rgba(255,255,255,.14);
+}
+.option:has(input:checked) { border-color: var(--ys-accent); background: color-mix(in srgb, var(--ys-accent) 12%, transparent); }
+.option input { margin-top: 3px; accent-color: var(--ys-accent); }
+.option strong { display: block; font-size: 13px; }
+.option small { display: block; font-size: 12px; color: var(--ys-muted); }

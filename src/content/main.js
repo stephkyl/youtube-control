@@ -48,7 +48,7 @@
 
   // --- État ---------------------------------------------------------------------
   browser.storage.local.get(['session', 'settings']).then((r) => {
-    state.session = YS.normalizeSession(r.session);
+    state.session = r.session ?? null;
     state.settings = YS.withDefaultSettings(r.settings);
     state.loaded = true;
     refresh({ filters: true });
@@ -61,7 +61,7 @@
     if (changes.settings) state.settings = YS.withDefaultSettings(changes.settings.newValue);
     if (changes.session) {
       const previousId = state.session?.id;
-      state.session = YS.normalizeSession(changes.session.newValue);
+      state.session = changes.session.newValue ?? null;
       // Nouvelle session : la vidéo affichée est réévaluée depuis zéro.
       if (state.session?.id !== previousId) resetVideoState(state.video.id);
     }

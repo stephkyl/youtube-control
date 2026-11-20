@@ -59,7 +59,6 @@ YSC.filter = (() => {
 
   function filterCards() {
     const rem = remainingMs();
-    html.classList.toggle('ysess-scarce', rem < T.SCARCE_MS);
     for (const card of document.querySelectorAll(CARD_SEL)) {
       // Ne traiter que la carte la plus externe (ex. ytd-rich-item-renderer > yt-lockup-view-model).
       if (card.parentElement?.closest(CARD_SEL)) continue;
@@ -71,7 +70,6 @@ YSC.filter = (() => {
   }
 
   function clearFilter() {
-    html.classList.remove('ysess-scarce');
     for (const el of document.querySelectorAll('[data-ysess-hidden]')) el.removeAttribute('data-ysess-hidden');
   }
 

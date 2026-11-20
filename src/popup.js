@@ -1,15 +1,16 @@
 'use strict';
 
-const { config, MSG, t, plural, esc, dayKey, midnightOf, fmtSpent, fmtLeft, fmtCounts } = YS;
+const { config, MSG, t, plural, esc, midnightOf, fmtSpent, fmtLeft, fmtCounts, totalsSince } = YS;
 
 // --- État ---------------------------------------------------------------------
 let session = null;
-let daily = null;
+let history = [];
 let renderedKey = null; // évite de reconstruire l'interface à chaque seconde
 let refs = {}; // éléments mis à jour chaque seconde
 
 document.documentElement.lang = YS.uiLang;
 document.title = t('extName');
+for (const node of document.querySelectorAll('[data-i18n]')) node.textContent = t(node.dataset.i18n);
 const app = document.getElementById('app');
 
 // --- Textes ---------------------------------------------------------------------
@@ -17,21 +18,19 @@ const app = document.getElementById('app');
 // Bilan du jour : sessions terminées depuis minuit + partie déjà écoulée de la session en cours.
 function todayText(running) {
   const now = Date.now();
-  const base = daily?.day === dayKey(now) ? daily : { totalMs: 0, sessions: 0 };
-  let total = base.totalMs;
-  let count = base.sessions;
+  const midnight = midnightOf(now);
+  let { ms, sessions } = totalsSince(history, midnight);
   if (running) {
-    total += Math.max(0, now - Math.max(session.startedAt, midnightOf(now)));
-    count += 1;
+    ms += now - Math.max(session.startedAt, midnight);
+    sessions += 1;
   }
-  return t('popupToday', fmtSpent(total), plural(count, 'statSessionsOne', 'statSessionsMany'));
+  return t('popupToday', fmtSpent(ms), plural(sessions, 'statSessionsOne', 'statSessionsMany'));
 }
 
 // --- Rendu ----------------------------------------------------------------------
 const footerLinks = () => `
   <div class="links">
     <button type="button" class="link" data-action="stats">${esc(t('popupStats'))}</button>
-    <button type="button" class="link" data-action="settings">${esc(t('popupSettings'))}</button>
   </div>`;
 
 const idleHtml = () => `
@@ -62,7 +61,6 @@ const actions = {
     browser.tabs.create({ url: browser.runtime.getURL(config.STATS_PAGE) });
     window.close();
   },
-  settings: () => browser.runtime.openOptionsPage(),
 };
 
 function render() {
@@ -89,17 +87,29 @@ app.addEventListener('click', (e) => {
   if (action) actions[action]();
 });
 
+// --- Réglages ---------------------------------------------------------------------
+// Un seul réglage pour l'instant : appliqué aussitôt dans les onglets YouTube.
+const radios = [...document.querySelectorAll('input[name="watchSuggestions"]')];
+function showSettings(stored) {
+  const { watchSuggestions } = YS.withDefaultSettings(stored);
+  for (const radio of radios) radio.checked = radio.value === watchSuggestions;
+}
+for (const radio of radios) {
+  radio.addEventListener('change', () => browser.storage.local.set({ settings: { watchSuggestions: radio.value } }));
+}
+
 // --- Données ----------------------------------------------------------------------
-browser.storage.local.get(['session', 'daily']).then((r) => {
-  session = YS.normalizeSession(r.session);
-  daily = r.daily || null;
+browser.storage.local.get(['session', 'history', 'settings']).then((r) => {
+  session = r.session ?? null;
+  history = r.history ?? [];
+  showSettings(r.settings);
   render();
 });
 
 browser.storage.onChanged.addListener((changes, area) => {
-  if (area !== 'local' || !(changes.session || changes.daily)) return;
-  if (changes.daily) daily = changes.daily.newValue || null;
-  if (changes.session) session = YS.normalizeSession(changes.session.newValue);
+  if (area !== 'local' || !(changes.session || changes.history)) return;
+  if (changes.history) history = changes.history.newValue ?? [];
+  if (changes.session) session = changes.session.newValue ?? null;
   render();
 });
 

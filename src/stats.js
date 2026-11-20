@@ -1,6 +1,6 @@
 'use strict';
 
-const { MSG, t, plural, esc, dayKey, midnightOf, DAY_MS, fmtDayLabel, fmtSpent, fmtCounts, sessionRowHtml } = YS;
+const { t, plural, esc, dayKey, midnightOf, DAY_MS, fmtClock, fmtDayLabel, fmtSpent, fmtCounts, totalsSince } = YS;
 
 document.documentElement.lang = YS.uiLang;
 document.title = t('statsPageTitle');
@@ -10,16 +10,25 @@ const $ = (id) => document.getElementById(id);
 const spent = (h) => Math.max(0, h.endedAt - h.startedAt);
 const sum = (rows, fn) => rows.reduce((acc, h) => acc + fn(h), 0);
 
-// Temps passé depuis `from` : seule la partie après cet instant compte (session à cheval sur minuit).
-const spentSince = (rows, from) => sum(rows, (h) => Math.max(0, h.endedAt - Math.max(h.startedAt, from)));
+// Une session : heure de début, durée, vidéos/shorts, étiquettes, puis l'intention.
+function sessionRowHtml(h) {
+  const meta = [fmtClock(h.startedAt), fmtSpent(spent(h)), ...fmtCounts(h.videos, h.shorts)];
+  const tags = [];
+  if (h.mode === 'long') tags.push(t('modeLong'));
+  if (h.endReason === 'manual') tags.push(t('histEarly'));
+  return `<li class="hist-row">
+    <div class="hist-meta">${esc(meta.join(' · '))}${tags.map((x) => ` <span class="hist-tag">${esc(x)}</span>`).join('')}</div>
+    <div class="hist-intent">${esc(t('quote', h.intention))}</div>
+  </li>`;
+}
 
 // Tuiles : aujourd'hui, 7 derniers jours (aujourd'hui compris), nombre total de sessions.
 function tilesHtml(history) {
   const todayStart = midnightOf(Date.now());
   const weekStart = midnightOf(todayStart - 6 * DAY_MS + DAY_MS / 2); // DAY_MS / 2 : robuste aux changements d'heure
   const tiles = [
-    { value: fmtSpent(spentSince(history, todayStart)), label: t('statToday') },
-    { value: fmtSpent(spentSince(history, weekStart)), label: t('statsLast7') },
+    { value: fmtSpent(totalsSince(history, todayStart).ms), label: t('statToday') },
+    { value: fmtSpent(totalsSince(history, weekStart).ms), label: t('statsLast7') },
     { value: String(history.length), label: t(history.length === 1 ? 'statsSessionOne' : 'statsSessionMany') },
   ];
   return tiles
@@ -39,14 +48,13 @@ function daysHtml(history) {
       ];
       return `<section class="day">
         <h2><span>${esc(fmtDayLabel(rows[0].endedAt))}</span><span class="day-sum">${esc(summary.join(' · '))}</span></h2>
-        <ul class="hist-list">${rows.map((h) => sessionRowHtml(h)).join('')}</ul>
+        <ul class="hist-list">${rows.map(sessionRowHtml).join('')}</ul>
       </section>`;
     })
     .join('');
 }
 
-function render(stored) {
-  const history = YS.normalizeHistory(stored);
+function render(history = []) {
   $('empty').hidden = history.length > 0;
   $('clear').hidden = history.length === 0;
   $('tiles').innerHTML = tilesHtml(history);
@@ -59,5 +67,5 @@ browser.storage.onChanged.addListener((changes, area) => {
 });
 
 $('clear').addEventListener('click', () => {
-  if (window.confirm(t('statsClearConfirm'))) browser.runtime.sendMessage({ type: MSG.CLEAR_HISTORY });
+  if (window.confirm(t('statsClearConfirm'))) browser.storage.local.remove('history');
 });

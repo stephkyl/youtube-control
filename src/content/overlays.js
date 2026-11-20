@@ -3,12 +3,11 @@
 // Écrans plein page : démarrage (intention + durée + réflexion), fin de session, vidéo hors session.
 // Chacun vit dans un Shadow DOM fermé : isolé du CSS de YouTube et illisible par ses scripts.
 YSC.overlays = (() => {
-  const { config, MSG, t, plural, esc, fmtSpent, fmtLeft, dayKey, countsToShow, sessionRowHtml } = YS;
+  const { config, MSG, t, plural, esc, fmtSpent, fmtLeft, midnightOf, countsToShow, totalsSince } = YS;
   const { T, state, send } = YSC;
   const html = document.documentElement;
 
   const DURATION_PRESETS = [5, 10, 15, 30, 60];
-  const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
   // --- Montage ----------------------------------------------------------------
   const builders = { start: buildStart, end: buildEnd, toolong: buildTooLong };
@@ -213,18 +212,15 @@ YSC.overlays = (() => {
 
   // --- Fin de session ---------------------------------------------------------
 
-  // Statistiques : durée réelle, bilan du jour, vidéos et/ou shorts.
-  function endTiles(s) {
+  // Statistiques : durée réelle, bilan du jour (d'après l'historique, qui contient déjà
+  // la session qui vient de finir), vidéos et/ou shorts.
+  function endTiles(s, history) {
     const nVideos = s.videos.length;
     const nShorts = s.shorts.length;
-    const todaySessions = s.todaySessions ?? 1;
+    const today = totalsSince(history, midnightOf(s.endedAt));
     const tiles = [
       { value: fmtSpent(s.endedAt - s.startedAt), label: t('statSession') },
-      {
-        value: fmtSpent(s.todayMs ?? s.endedAt - s.startedAt),
-        label: t('statToday'),
-        sub: plural(todaySessions, 'statSessionsOne', 'statSessionsMany'),
-      },
+      { value: fmtSpent(today.ms), label: t('statToday'), sub: plural(today.sessions, 'statSessionsOne', 'statSessionsMany') },
     ];
     const show = countsToShow(nVideos, nShorts);
     if (show.videos) tiles.push({ value: String(nVideos), label: t(nVideos === 1 ? 'statVideo' : 'statVideos') });
@@ -252,11 +248,7 @@ YSC.overlays = (() => {
 
   function buildEnd(screen) {
     const s = state.session;
-    const title =
-      s.endReason === 'manual'
-        ? t(pick(['endEarly1', 'endEarly2']))
-        : t(pick(['endTitle1', 'endTitle2', 'endTitle3', 'endTitle4']));
-    const next = t(pick(['endNext1', 'endNext2', 'endNext3', 'endNext4', 'endNext5']));
+    const title = t(s.endReason === 'manual' ? 'endEarly' : 'endTitle');
 
     screen.innerHTML = `
       <div class="particles" aria-hidden="true">${particlesHtml()}</div>
@@ -266,16 +258,12 @@ YSC.overlays = (() => {
           <path class="check-mark" d="M38 62 L54 77 L84 45"/>
         </svg>
         <h1 class="fade d1">${esc(title)}</h1>
-        <div class="tiles fade d2">${endTiles(s)}</div>
+        <div class="tiles fade d2" id="tiles"></div>
         <p class="quote fade d3">${esc(t('endIntention', s.intention))}</p>
-        <p class="lead fade d4">${esc(next)}</p>
+        <p class="lead fade d4">${esc(t('endNext'))}</p>
         <button type="button" class="primary fade d5" id="close">${esc(t('endClose'))}</button>
         <button type="button" class="link fade d5" id="again">${esc(t('endAgain'))}</button>
-        <section class="history fade d5" id="history" hidden>
-          <h2>${esc(t('endTodaySessions'))}</h2>
-          <ul class="hist-list" id="hist-list"></ul>
-          <button type="button" class="link" id="all-history">${esc(t('endAllHistory'))}</button>
-        </section>
+        <button type="button" class="link fade d5" id="all-history">${esc(t('endAllHistory'))}</button>
       </div>`;
 
     const $ = (sel) => screen.querySelector(sel);
@@ -287,13 +275,9 @@ YSC.overlays = (() => {
     });
     $('#all-history').addEventListener('click', () => send({ type: MSG.OPEN_STATS }));
 
-    // Sessions du jour (la session qui vient de finir est déjà dans l'historique).
+    // Les tuiles apparaissent après 1,45 s (animation) : la lecture du stockage a le temps de finir.
     browser.storage.local.get('history').then(({ history }) => {
-      const today = dayKey(s.endedAt);
-      const rows = YS.normalizeHistory(history).filter((h) => dayKey(h.endedAt) === today);
-      if (!rows.length) return;
-      $('#hist-list').innerHTML = rows.map((h) => sessionRowHtml(h, { current: h.id === s.id })).join('');
-      $('#history').hidden = false;
+      $('#tiles').innerHTML = endTiles(s, history ?? []);
     });
   }
 

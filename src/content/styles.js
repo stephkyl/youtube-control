@@ -103,7 +103,7 @@ YSC.styles = (() => {
     .ring span { position: absolute; inset: 0; display: grid; place-items: center; font-size: 34px; font-weight: 600; font-variant-numeric: tabular-nums; }
     .ring.done span { color: var(--ys-accent); }
 
-    /* Écran de fin : coche, statistiques, sessions du jour */
+    /* Écran de fin : coche, statistiques */
     .check { width: 104px; height: 104px; margin: 0 auto 18px; display: block; }
     .check-circle { fill: ${mix('mint', 8)}; stroke: var(--ys-mint); stroke-width: 5; stroke-dasharray: 327; stroke-dashoffset: 327;
       transform-origin: center; transform: rotate(-90deg); animation: fill 1s cubic-bezier(.65,0,.35,1) .15s forwards, glow 3.5s ease-in-out 1.6s infinite; }
@@ -114,17 +114,6 @@ YSC.styles = (() => {
     .tile-value { font-size: 22px; font-weight: 650; color: var(--ys-text); font-variant-numeric: tabular-nums; line-height: 1.2; }
     .tile-label { font-size: 12px; color: var(--ys-mint-soft); margin-top: 4px; letter-spacing: .02em; }
     .tile-sub { font-size: 11px; color: var(--ys-mint-faint); margin-top: 2px; }
-    .history { margin-top: 22px; padding-top: 18px; border-top: 1px solid rgba(255,255,255,.08); text-align: left; }
-    .history[hidden] { display: none; }
-    .history h2 { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--ys-muted); font-weight: 600; margin: 0 0 10px; }
-    .history .link { margin-top: 6px; padding-left: 0; }
-    .hist-list { list-style: none; margin: 0; padding: 0; max-height: 220px; overflow: auto; }
-    .hist-row { padding: 10px 12px; border-radius: 12px; margin-bottom: 6px; background: rgba(255,255,255,.03); }
-    .hist-row.current { background: ${mix('mint', 8)}; border: 1px solid ${mix('mint', 18)}; }
-    .hist-meta { font-size: 13px; color: var(--ys-label); font-variant-numeric: tabular-nums; }
-    .hist-tag { display: inline-block; font-size: 11px; color: var(--ys-mint-soft); border: 1px solid ${mix('mint', 25)};
-      border-radius: 999px; padding: 0 7px; margin-left: 4px; vertical-align: 1px; }
-    .hist-intent { font-size: 13px; color: var(--ys-quote); font-style: italic; margin-top: 3px; overflow-wrap: anywhere; }
 
     /* Animations */
     .fade { opacity: 0; animation: rise .7s cubic-bezier(.2,.8,.2,1) forwards; }

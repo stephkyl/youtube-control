@@ -9,11 +9,10 @@ var YSC = (() => {
   document.documentElement.classList.add('ysess-pending');
 
   // Délais et seuils (ms, sauf mention contraire).
-  const T = Object.freeze({
+  const T = {
     COUNTDOWN_S: 10, // réflexion avant de pouvoir démarrer (s)
     FIT_TOLERANCE_MS: 5000, // marge pour l'arrondi des durées affichées
     END_SCREEN_TTL_MS: 60 * 1000, // l'écran de fin reste affiché 1 min, puis formulaire
-    SCARCE_MS: 2 * 60 * 1000, // en dessous : on arrête de charger des suggestions
     LAST_SHORT_THRESHOLD_MS: 2 * 60 * 1000, // short commencé à moins de 2 min de la fin → le dernier
     PLAYER_SETTLE_MS: 1200, // sans API du lecteur : délai avant de se fier à <video> après navigation
     SHORT_END_MARGIN_S: 0.35, // arrêt du dernier short juste avant sa fin (s)
@@ -27,7 +26,7 @@ var YSC = (() => {
     URL_POLL_MS: 100, // détection rapide des changements d'URL (passage d'un short à l'autre)
     FILTER_EVERY_MS: 2000, // refiltrage périodique : les durées restantes baissent
     MUTATION_DEBOUNCE_MS: 200,
-  });
+  };
 
   const newVideoState = (id, { lastShort = false } = {}) => ({
     id, // identifiant de la vidéo affichée (d'après l'URL), ou null

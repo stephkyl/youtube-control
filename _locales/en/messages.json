@@ -89,38 +89,14 @@
   "confirmBack": {
     "message": "Edit"
   },
-  "endTitle1": {
+  "endTitle": {
     "message": "Session complete. Well done."
   },
-  "endTitle2": {
-    "message": "All wrapped up."
-  },
-  "endTitle3": {
-    "message": "Mission accomplished."
-  },
-  "endTitle4": {
-    "message": "And that's a wrap."
-  },
-  "endEarly1": {
+  "endEarly": {
     "message": "Stopping before the end takes strength."
   },
-  "endEarly2": {
-    "message": "You chose to stop. Good call."
-  },
-  "endNext1": {
+  "endNext": {
     "message": "Get up, stretch, take a deep breath."
-  },
-  "endNext2": {
-    "message": "A glass of water, and on to the next thing."
-  },
-  "endNext3": {
-    "message": "The rest of your day is waiting."
-  },
-  "endNext4": {
-    "message": "Close the tab while it's easy."
-  },
-  "endNext5": {
-    "message": "You did what you planned."
   },
   "videosNone": {
     "message": "No videos"
@@ -173,14 +149,8 @@
   "pillNo": {
     "message": "Keep going"
   },
-  "endTodaySessions": {
-    "message": "Today's sessions"
-  },
   "endAllHistory": {
     "message": "Full history"
-  },
-  "histCurrent": {
-    "message": "this one"
   },
   "histEarly": {
     "message": "stopped early"
@@ -275,12 +245,6 @@
   "popupEnd": {
     "message": "End the session now"
   },
-  "optionsPageTitle": {
-    "message": "Settings · YouTube Session"
-  },
-  "optionsTitle": {
-    "message": "Settings"
-  },
   "optWatchLegend": {
     "message": "Suggestions while watching a video"
   },
@@ -295,8 +259,5 @@
   },
   "optHideDesc": {
     "message": "Nothing beside, below or at the end of the video."
-  },
-  "optSaved": {
-    "message": "Saved. Applied immediately."
   }
 }
