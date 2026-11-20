@@ -659,15 +659,7 @@
         <div class="eyebrow">${esc(t('tooLongEyebrow'))}</div>
         <h1>${esc(t('tooLongTitle'))}</h1>
         <p class="lead">${esc(detail)}</p>
-        <div class="row">
-          <button type="button" class="secondary" id="back">${esc(t('tooLongBack'))}</button>
-          <button type="button" class="primary" id="home">${esc(t('tooLongHome'))}</button>
-        </div>
       </div>`;
-    screen.querySelector('#back').addEventListener('click', () => history.back());
-    screen.querySelector('#home').addEventListener('click', () => {
-      location.href = '/';
-    });
   }
 
   // ---------------------------------------------------------------------------
