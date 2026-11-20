@@ -12,7 +12,7 @@
 
 const LAST_VIDEO_THRESHOLD_MS = 3 * 60 * 1000; // vidéo terminée avec < 3 min restantes → fin
 const OVERTIME_CAP_MS = 30 * 60 * 1000;        // garde-fou si une vidéo s'éternise après l'heure
-const MIN_DURATION = 5;
+const MIN_DURATION = 1;
 const MAX_DURATION = 180;
 const MAX_VIDEOS = 500;
 const VIDEO_ID_RE = /^[A-Za-z0-9_-]{11}$/;

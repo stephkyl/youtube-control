@@ -37,9 +37,8 @@ html.ysess-last-short #navigation-button-down,
 html.ysess-last-short #navigation-button-up {
   visibility: hidden !important;
 }
-html.ysess-last-short #shorts-inner-container {
-  overflow: hidden !important;
-}
+/* Ne pas changer l'overflow du conteneur ici : Firefox le reconstruit et remet le fil
+   tout en haut. Le défilement est bloqué côté script (événements + position verrouillée). */
 
 /* Quand il ne reste presque plus rien, inutile de charger des pages de suggestions vides. */
 html.ysess-scarce ytd-continuation-item-renderer {

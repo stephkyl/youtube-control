@@ -4,7 +4,9 @@
   // ---------------------------------------------------------------------------
   // Réglages
   // ---------------------------------------------------------------------------
-  const DURATIONS = [10, 20, 30, 45, 60, 90];
+  const DURATIONS = [5, 10, 15, 30, 60];
+  const MIN_DURATION = 1;   // durée libre : bornes (en minutes), aussi vérifiées par background.js
+  const MAX_DURATION = 180;
   const MIN_INTENTION = 10;              // caractères
   const COUNTDOWN_S = 10;                // temps de réflexion avant de pouvoir démarrer
   const FIT_TOLERANCE_MS = 5000;         // marge pour l'arrondi des durées affichées
@@ -271,6 +273,46 @@
 
   const inLastShortMode = () => html.classList.contains('ysess-last-short');
 
+  // Verrou de position : si le fil défile malgré tout (barre de défilement, script de
+  // YouTube…), on le remet là où il était. Pendant la première seconde, on suit la
+  // position pour laisser l'aimantation (scroll-snap) finir de caler le short.
+  const SNAP_SETTLE_MS = 1200;
+  let scrollLock = null; // { el, top, since }
+
+  function findFeedScroller() {
+    let node = document.querySelector('ytd-reel-video-renderer[is-active]') || getMainVideo('shorts');
+    while (node && node !== document.documentElement) {
+      const oy = getComputedStyle(node).overflowY;
+      if ((oy === 'auto' || oy === 'scroll') && node.scrollHeight > node.clientHeight) return node;
+      node = node.parentElement;
+    }
+    return document.scrollingElement;
+  }
+
+  function setLastShortMode(on) {
+    if (on === inLastShortMode()) return;
+    html.classList.toggle('ysess-last-short', on);
+    if (on) {
+      const el = findFeedScroller();
+      scrollLock = el ? { el, top: el.scrollTop, since: now() } : null;
+    } else {
+      scrollLock = null;
+    }
+  }
+
+  document.addEventListener(
+    'scroll',
+    (e) => {
+      if (!scrollLock || !inLastShortMode()) return;
+      const el = scrollLock.el;
+      const target = e.target === document ? document.scrollingElement : e.target;
+      if (target !== el) return;
+      if (now() - scrollLock.since < SNAP_SETTLE_MS) scrollLock.top = el.scrollTop;
+      else if (Math.abs(el.scrollTop - scrollLock.top) > 1) el.scrollTop = scrollLock.top;
+    },
+    true
+  );
+
   // Fin du dernier short : on l'arrête juste avant qu'il ne reparte en boucle.
   document.addEventListener(
     'timeupdate',
@@ -371,6 +413,7 @@
   // --- Démarrage : intention + durée + temps de réflexion --------------------
   function buildStart(screen) {
     let duration = null;
+    let customDuration = ''; // texte saisi dans le champ de durée libre
     let intention = '';
     let timer = null;
     let onVisibility = null;
@@ -392,7 +435,12 @@
           <div class="field">
             <div class="label">${esc(t('startDurationLabel'))}</div>
             <div class="chips">
-              ${DURATIONS.map((d) => `<button type="button" class="chip" data-d="${d}" aria-pressed="${d === duration}">${esc(t('minutesShort', d))}</button>`).join('')}
+              ${DURATIONS.map((d) => `<button type="button" class="chip" data-d="${d}" aria-pressed="${d === duration && !customDuration}">${esc(t('minutesShort', d))}</button>`).join('')}
+              <label class="chip custom">
+                <input type="number" id="custom" inputmode="numeric" min="${MIN_DURATION}" max="${MAX_DURATION}" step="1"
+                  placeholder="${esc(t('startCustomPlaceholder'))}" aria-label="${esc(t('startCustomLabel'))}">
+                <span>min</span>
+              </label>
             </div>
           </div>
           <div class="field">
@@ -405,20 +453,46 @@
 
       const $ = (s) => screen.querySelector(s);
       const ta = $('#intent');
+      const custom = $('#custom');
+      const customChip = screen.querySelector('.chip.custom');
+      const presetChips = [...screen.querySelectorAll('.chip[data-d]')];
       ta.value = intention;
+      custom.value = customDuration;
+      customChip.classList.toggle('active', !!customDuration);
+
       const update = () => {
         intention = ta.value;
         const missing = MIN_INTENTION - intention.trim().length;
-        $('#hint').textContent = missing <= 0 ? '' : missing === 1 ? t('startHintOne') : t('startHintMany', missing);
+        const badCustom = customDuration !== '' && duration === null;
+        $('#hint').textContent = badCustom
+          ? t('startCustomRange', MIN_DURATION, MAX_DURATION)
+          : missing <= 0
+            ? ''
+            : missing === 1
+              ? t('startHintOne')
+              : t('startHintMany', missing);
         $('#go').disabled = !(duration && missing <= 0);
       };
-      for (const chip of screen.querySelectorAll('.chip')) {
+      for (const chip of presetChips) {
         chip.addEventListener('click', () => {
           duration = Number(chip.dataset.d);
-          for (const c of screen.querySelectorAll('.chip')) c.setAttribute('aria-pressed', String(c === chip));
+          customDuration = '';
+          custom.value = '';
+          customChip.classList.remove('active');
+          for (const c of presetChips) c.setAttribute('aria-pressed', String(c === chip));
           update();
         });
       }
+      // Durée libre : saisir une valeur désélectionne les durées proposées.
+      custom.addEventListener('input', () => {
+        customDuration = custom.value.trim();
+        const n = Number(customDuration);
+        duration = Number.isInteger(n) && n >= MIN_DURATION && n <= MAX_DURATION ? n : null;
+        if (!customDuration) duration = null;
+        customChip.classList.toggle('active', !!customDuration);
+        for (const c of presetChips) c.setAttribute('aria-pressed', 'false');
+        update();
+      });
       ta.addEventListener('input', update);
       $('#go').addEventListener('click', renderConfirm);
       update();
@@ -429,7 +503,7 @@
       screen.innerHTML = `
         <div class="card center">
           <div class="eyebrow">${esc(t('confirmEyebrow'))}</div>
-          <h1>${esc(t('confirmTitle', duration))}</h1>
+          <h1>${esc(duration === 1 ? t('confirmTitleOne') : t('confirmTitle', duration))}</h1>
           <p class="quote" id="quote"></p>
           <div class="ring">
             <svg viewBox="0 0 120 120" aria-hidden="true">
@@ -588,10 +662,7 @@
     const running = isRunning();
     html.classList.toggle('ysess-hide-related', running && settings.watchSuggestions === 'hide');
     html.classList.toggle('ysess-freeze-related', running && settings.watchSuggestions === 'fit');
-    html.classList.toggle(
-      'ysess-last-short',
-      running && pageType() === 'shorts' && !!lastShortFor && lastShortFor === currentVideoId
-    );
+    setLastShortMode(running && pageType() === 'shorts' && !!lastShortFor && lastShortFor === currentVideoId);
 
     if (running) {
       trackVideo();
@@ -689,6 +760,14 @@
     }
     .chip:hover { border-color: rgba(255,255,255,.4); }
     .chip[aria-pressed="true"] { background: #e9c46a; border-color: #e9c46a; color: #1b1d27; font-weight: 600; }
+    .chip.custom { display: inline-flex; align-items: center; gap: 4px; padding: 5px 14px 5px 10px; cursor: text; }
+    .chip.custom:focus-within, .chip.custom.active { border-color: #e9c46a; }
+    .chip.custom input {
+      width: 5.5em; font: inherit; font-size: 14px; padding: 4px 6px; border: 0; border-radius: 6px;
+      background: rgba(0,0,0,.25); color: #eef0f6; outline: none; -moz-appearance: textfield; text-align: right;
+    }
+    .chip.custom input::placeholder { color: #6f7895; text-align: left; }
+    .chip.custom span { color: #b9c0d6; }
     textarea {
       width: 100%; font: inherit; font-size: 15px; line-height: 1.5; padding: 12px 14px;
       border-radius: 12px; border: 1px solid rgba(255,255,255,.16); background: rgba(0,0,0,.25);
