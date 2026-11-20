@@ -289,8 +289,44 @@
     return document.scrollingElement;
   }
 
+  // Repère l'élément du fil qui contient le short en cours, sans dépendre des noms
+  // d'éléments de YouTube : on remonte depuis la vidéo jusqu'à un élément haut d'au moins
+  // un demi-écran dont un frère du même type est empilé juste en dessous (le short suivant).
+  // Les calques du lecteur (contrôles, etc.) se superposent au lieu de s'empiler : ignorés.
+  function findCurrentReelItem() {
+    let node = getMainVideo('shorts');
+    const minHeight = window.innerHeight * 0.5;
+    while (node && node.parentElement && node !== document.body) {
+      const rect = node.getBoundingClientRect();
+      if (rect.height >= minHeight) {
+        for (let sib = node.nextElementSibling; sib; sib = sib.nextElementSibling) {
+          if (sib.tagName !== node.tagName) continue;
+          const r = sib.getBoundingClientRect();
+          if (r.height >= minHeight && r.top >= rect.bottom - 2) return node;
+        }
+      }
+      node = node.parentElement;
+    }
+    return null;
+  }
+
+  // Masque tout ce qui suit le dernier short dans le fil (y compris ce que YouTube ajoute ensuite).
+  function hideFollowingReels() {
+    const item = findCurrentReelItem();
+    if (!item) return;
+    for (let sib = item.nextElementSibling; sib; sib = sib.nextElementSibling) {
+      if (!sib.hasAttribute('data-ysess-after-last')) sib.setAttribute('data-ysess-after-last', '');
+    }
+  }
+
+  function showFollowingReels() {
+    for (const el of document.querySelectorAll('[data-ysess-after-last]')) el.removeAttribute('data-ysess-after-last');
+  }
+
   function setLastShortMode(on) {
+    if (on) hideFollowingReels(); // à chaque passage : le fil peut s'allonger
     if (on === inLastShortMode()) return;
+    if (!on) showFollowingReels();
     html.classList.toggle('ysess-last-short', on);
     if (on) {
       const el = findFeedScroller();

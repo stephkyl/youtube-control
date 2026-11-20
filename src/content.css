@@ -29,13 +29,21 @@ html.ysess-freeze-related ytd-watch-next-secondary-results-renderer ytd-continua
   display: none !important;
 }
 
-/* Dernier short : rien en dessous (ni aperçu du suivant, ni flèches), pas de défilement. */
+/* Dernier short : rien en dessous (ni aperçu du suivant, ni flèches), pas de défilement.
+   [data-ysess-after-last] est posé par le script (repérage par position) ; les sélecteurs
+   suivants servent de filet si la structure de YouTube correspond. */
+html.ysess-last-short [data-ysess-after-last],
 html.ysess-last-short ytd-reel-video-renderer[is-active] ~ ytd-reel-video-renderer,
 html.ysess-last-short .reel-video-in-sequence-new:has(ytd-reel-video-renderer[is-active]) ~ .reel-video-in-sequence-new,
 html.ysess-last-short .reel-video-in-sequence:has([is-active]) ~ .reel-video-in-sequence,
 html.ysess-last-short #navigation-button-down,
 html.ysess-last-short #navigation-button-up {
+  /* visibility seule ne suffit pas : un descendant peut se réafficher (visibility: visible),
+     ce qui laissait une silhouette grise. opacity masque tout le sous-arbre sans changer la
+     mise en page, donc on voit simplement le fond de la page (clair ou sombre). */
   visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
 }
 /* Ne pas changer l'overflow du conteneur ici : Firefox le reconstruit et remet le fil
    tout en haut. Le défilement est bloqué côté script (événements + position verrouillée). */
