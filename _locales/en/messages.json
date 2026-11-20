@@ -23,6 +23,21 @@
   "startLead": {
     "message": "YouTube stays closed until a session is running. Pick a length and write down what you're here to do."
   },
+  "startModeLabel": {
+    "message": "Session type"
+  },
+  "modeAll": {
+    "message": "Shorts & videos"
+  },
+  "modeAllDesc": {
+    "message": "Everything, shorts included."
+  },
+  "modeLong": {
+    "message": "Long videos only"
+  },
+  "modeLongDesc": {
+    "message": "Shorts disappear from YouTube."
+  },
   "startDurationLabel": {
     "message": "Session length"
   },
@@ -52,9 +67,6 @@
   },
   "startCommit": {
     "message": "I commit"
-  },
-  "confirmEyebrow": {
-    "message": "Just a moment"
   },
   "confirmTitle": {
     "message": "$1 minutes to:"
@@ -119,8 +131,95 @@
   "videosMany": {
     "message": "$1 videos"
   },
-  "endStats": {
-    "message": "$1 · $2 of $3 min planned"
+  "shortsOne": {
+    "message": "1 short"
+  },
+  "shortsMany": {
+    "message": "$1 shorts"
+  },
+  "statSession": {
+    "message": "this session"
+  },
+  "statToday": {
+    "message": "today"
+  },
+  "statSessionsOne": {
+    "message": "1 session"
+  },
+  "statSessionsMany": {
+    "message": "$1 sessions"
+  },
+  "statVideo": {
+    "message": "video"
+  },
+  "statVideos": {
+    "message": "videos"
+  },
+  "statShort": {
+    "message": "short"
+  },
+  "statShorts": {
+    "message": "shorts"
+  },
+  "pillEnd": {
+    "message": "End"
+  },
+  "pillConfirm": {
+    "message": "End the session?"
+  },
+  "pillYes": {
+    "message": "Yes"
+  },
+  "pillNo": {
+    "message": "Keep going"
+  },
+  "endTodaySessions": {
+    "message": "Today's sessions"
+  },
+  "endAllHistory": {
+    "message": "Full history"
+  },
+  "histCurrent": {
+    "message": "this one"
+  },
+  "histEarly": {
+    "message": "stopped early"
+  },
+  "dayToday": {
+    "message": "Today"
+  },
+  "dayYesterday": {
+    "message": "Yesterday"
+  },
+  "popupStats": {
+    "message": "History"
+  },
+  "statsPageTitle": {
+    "message": "History · YouTube Session"
+  },
+  "statsTitle": {
+    "message": "Session history"
+  },
+  "statsEmpty": {
+    "message": "No sessions yet. They'll show up here once finished."
+  },
+  "statsLast7": {
+    "message": "last 7 days"
+  },
+  "statsSessionOne": {
+    "message": "session recorded"
+  },
+  "statsSessionMany": {
+    "message": "sessions recorded"
+  },
+  "statsClear": {
+    "message": "Clear history"
+  },
+  "statsClearConfirm": {
+    "message": "Delete the whole session history? This can't be undone."
+  },
+  "popupToday": {
+    "message": "Today: $1 · $2"
   },
   "endIntention": {
     "message": "Your intention: “$1”"
@@ -142,12 +241,6 @@
   },
   "tooLongDetail": {
     "message": "It has $1 left, you have $2 left."
-  },
-  "tooLongBack": {
-    "message": "Go back"
-  },
-  "tooLongHome": {
-    "message": "Suggestions"
   },
   "pillLeftOne": {
     "message": "1 min left"

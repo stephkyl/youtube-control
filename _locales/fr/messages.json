@@ -23,6 +23,21 @@
   "startLead": {
     "message": "YouTube reste fermé tant qu'aucune session n'est en cours. Choisis une durée et écris ce que tu viens y faire."
   },
+  "startModeLabel": {
+    "message": "Type de session"
+  },
+  "modeAll": {
+    "message": "Shorts et vidéos"
+  },
+  "modeAllDesc": {
+    "message": "Tout, shorts compris."
+  },
+  "modeLong": {
+    "message": "Vidéos longues uniquement"
+  },
+  "modeLongDesc": {
+    "message": "Les shorts disparaissent de YouTube."
+  },
   "startDurationLabel": {
     "message": "Durée de la session"
   },
@@ -52,9 +67,6 @@
   },
   "startCommit": {
     "message": "Je m'engage"
-  },
-  "confirmEyebrow": {
-    "message": "Un instant"
   },
   "confirmTitle": {
     "message": "$1 minutes pour :"
@@ -119,8 +131,95 @@
   "videosMany": {
     "message": "$1 vidéos"
   },
-  "endStats": {
-    "message": "$1 · $2 sur $3 min prévues"
+  "shortsOne": {
+    "message": "1 short"
+  },
+  "shortsMany": {
+    "message": "$1 shorts"
+  },
+  "statSession": {
+    "message": "cette session"
+  },
+  "statToday": {
+    "message": "aujourd'hui"
+  },
+  "statSessionsOne": {
+    "message": "1 session"
+  },
+  "statSessionsMany": {
+    "message": "$1 sessions"
+  },
+  "statVideo": {
+    "message": "vidéo"
+  },
+  "statVideos": {
+    "message": "vidéos"
+  },
+  "statShort": {
+    "message": "short"
+  },
+  "statShorts": {
+    "message": "shorts"
+  },
+  "pillEnd": {
+    "message": "Terminer"
+  },
+  "pillConfirm": {
+    "message": "Terminer la session ?"
+  },
+  "pillYes": {
+    "message": "Oui"
+  },
+  "pillNo": {
+    "message": "Continuer"
+  },
+  "endTodaySessions": {
+    "message": "Sessions du jour"
+  },
+  "endAllHistory": {
+    "message": "Tout l'historique"
+  },
+  "histCurrent": {
+    "message": "celle-ci"
+  },
+  "histEarly": {
+    "message": "arrêtée plus tôt"
+  },
+  "dayToday": {
+    "message": "Aujourd'hui"
+  },
+  "dayYesterday": {
+    "message": "Hier"
+  },
+  "popupStats": {
+    "message": "Historique"
+  },
+  "statsPageTitle": {
+    "message": "Historique · Session YouTube"
+  },
+  "statsTitle": {
+    "message": "Historique des sessions"
+  },
+  "statsEmpty": {
+    "message": "Aucune session pour l'instant. Elles apparaîtront ici une fois terminées."
+  },
+  "statsLast7": {
+    "message": "7 derniers jours"
+  },
+  "statsSessionOne": {
+    "message": "session enregistrée"
+  },
+  "statsSessionMany": {
+    "message": "sessions enregistrées"
+  },
+  "statsClear": {
+    "message": "Effacer l'historique"
+  },
+  "statsClearConfirm": {
+    "message": "Supprimer tout l'historique des sessions ? C'est définitif."
+  },
+  "popupToday": {
+    "message": "Aujourd'hui : $1 · $2"
   },
   "endIntention": {
     "message": "Ton intention : « $1 »"
@@ -142,12 +241,6 @@
   },
   "tooLongDetail": {
     "message": "Elle dure encore $1, il te reste $2."
-  },
-  "tooLongBack": {
-    "message": "Revenir en arrière"
-  },
-  "tooLongHome": {
-    "message": "Suggestions"
   },
   "pillLeftOne": {
     "message": "1 min restante"

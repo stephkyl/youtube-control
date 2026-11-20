@@ -48,6 +48,31 @@ html.ysess-last-short #navigation-button-up {
 /* Ne pas changer l'overflow du conteneur ici : Firefox le reconstruit et remet le fil
    tout en haut. Le défilement est bloqué côté script (événements + position verrouillée). */
 
+/* Session « vidéos longues » : tout ce qui mène à un short disparaît (vignettes, étagères,
+   résultats de recherche, menu latéral, barre mobile). Repérage par le lien, plus stable
+   que les noms d'éléments de YouTube. Les filtres/onglets « Shorts » sont marqués par le script. */
+html.ysess-no-shorts :is(
+  ytd-rich-section-renderer,
+  ytd-reel-shelf-renderer,
+  ytd-rich-shelf-renderer,
+  grid-shelf-view-model,
+  ytd-rich-item-renderer,
+  ytd-video-renderer,
+  ytd-grid-video-renderer,
+  ytd-compact-video-renderer,
+  ytd-reel-item-renderer,
+  yt-lockup-view-model,
+  ytm-shorts-lockup-view-model,
+  ytm-shorts-lockup-view-model-v2,
+  ytd-guide-entry-renderer,
+  ytd-mini-guide-entry-renderer,
+  ytm-pivot-bar-item-renderer
+):has(a[href^="/shorts"]),
+html.ysess-no-shorts ytd-rich-shelf-renderer[is-shorts],
+html.ysess-no-shorts [data-ysess-noshorts] {
+  display: none !important;
+}
+
 /* Quand il ne reste presque plus rien, inutile de charger des pages de suggestions vides. */
 html.ysess-scarce ytd-continuation-item-renderer {
   display: none !important;

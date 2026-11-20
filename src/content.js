@@ -10,7 +10,7 @@
   const MIN_INTENTION = 10;              // caractères
   const COUNTDOWN_S = 10;                // temps de réflexion avant de pouvoir démarrer
   const FIT_TOLERANCE_MS = 5000;         // marge pour l'arrondi des durées affichées
-  const END_SCREEN_TTL = 1 * 60 * 1000; // l'écran de fin reste affiché 30 min, puis formulaire
+  const END_SCREEN_TTL = 1 * 60 * 1000;  // l'écran de fin reste affiché 1 min, puis formulaire
   const SCARCE_MS = 2 * 60 * 1000;       // en dessous : on arrête de charger des suggestions
   const LAST_SHORT_THRESHOLD_MS = 2 * 60 * 1000; // short commencé à moins de 2 min de la fin → le dernier
 
@@ -35,32 +35,21 @@
 
   const now = () => Date.now();
   const isRunning = () => !!session && (session.status === 'active' || session.status === 'overtime');
+  const isLongMode = () => isRunning() && session.mode === 'long'; // session « vidéos longues uniquement »
   const remainingMs = () => (session && session.status === 'active' ? Math.max(0, session.endsAt - now()) : 0);
   const send = (msg) => browser.runtime.sendMessage(msg).catch(() => undefined);
 
   // ---------------------------------------------------------------------------
   // Utilitaires
   // ---------------------------------------------------------------------------
-  const esc = (s) =>
-    String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+  // Traductions, échappement HTML, formatage des durées et de l'historique : voir shared.js.
+  const { t, esc, fmtSpent, dayKey, sessionRowHtml } = YS;
 
   const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
-
-  // Traductions : _locales/en (par défaut) et _locales/fr, selon la langue de Firefox.
-  const t = (key, ...subs) => browser.i18n.getMessage(key, subs.map(String));
-  const fmtVideos = (n) => (n === 0 ? t('videosNone') : n === 1 ? t('videosOne') : t('videosMany', n));
 
   function parseTime(t) {
     const parts = t.split(':').map(Number);
     return parts.reduce((acc, n) => acc * 60 + n, 0) * 1000;
-  }
-
-  function fmtSpent(ms) {
-    const m = Math.max(1, Math.round(ms / 60000));
-    if (m < 60) return t('minutesShort', m);
-    const h = Math.floor(m / 60);
-    const r = m % 60;
-    return r ? t('hoursMinutesShort', h, String(r).padStart(2, '0')) : t('hoursShort', h);
   }
 
   // Toujours en minutes, même à la fin : pas de compte à rebours en secondes.
@@ -190,12 +179,41 @@
     for (const el of document.querySelectorAll('[data-ysess-hidden]')) el.removeAttribute('data-ysess-hidden');
   }
 
+  // Session « vidéos longues » : les vignettes, étagères et entrées de menu qui mènent à
+  // un short sont masquées en CSS (content.css, classe ysess-no-shorts). Ici, uniquement
+  // ce qui ne contient pas de lien : filtres de recherche et onglets de chaîne « Shorts ».
+  const SHORTS_LABEL_SEL = 'yt-chip-cloud-chip-renderer, chip-view-model, yt-chip-cloud-chip-view-model, yt-tab-shape, tp-yt-paper-tab';
+  function markShortsLabels() {
+    const on = isLongMode();
+    if (!on) {
+      for (const el of document.querySelectorAll('[data-ysess-noshorts]')) el.removeAttribute('data-ysess-noshorts');
+      return;
+    }
+    for (const el of document.querySelectorAll(SHORTS_LABEL_SEL)) {
+      if ((el.textContent || '').trim() === 'Shorts' && !el.hasAttribute('data-ysess-noshorts')) {
+        el.setAttribute('data-ysess-noshorts', '');
+      }
+    }
+  }
+
+  // Short ouvert par lien direct en session « vidéos longues » : lecteur classique.
+  // Renvoie true si une redirection est en cours.
+  let redirecting = false;
+  function redirectShortsToWatch() {
+    if (redirecting || !isLongMode() || pageType() !== 'shorts') return redirecting;
+    redirecting = true;
+    const id = urlVideoId('shorts');
+    location.replace(id ? `/watch?v=${id}` : '/');
+    return true;
+  }
+
   let filterTimer = null;
   new MutationObserver(() => {
     if (filterTimer || !isRunning()) return;
     filterTimer = setTimeout(() => {
       filterTimer = null;
       filterCards();
+      markShortsLabels();
     }, 200);
   }).observe(html, { childList: true, subtree: true, characterData: true });
 
@@ -247,7 +265,7 @@
       // Un short n'est jamais coupé ni refusé. S'il commence à moins de 2 min de la fin
       // (ou après), c'est le dernier : lu en entier, même au-delà de la session.
       if (session.status === 'overtime' || remainingMs() < LAST_SHORT_THRESHOLD_MS) lastShortFor = id;
-      send({ type: 'VIDEO_STARTED', videoId: id });
+      send({ type: 'VIDEO_STARTED', videoId: id, kind: 'short' });
       return;
     }
     const rate = v.playbackRate || 1;
@@ -255,7 +273,8 @@
     const rem = remainingMs();
     const fits = session.status === 'active' && videoMs <= rem + FIT_TOLERANCE_MS;
     if (fits) {
-      send({ type: 'VIDEO_STARTED', videoId: id });
+      // Un short ouvert dans le lecteur classique (session « vidéos longues ») compte comme vidéo.
+      send({ type: 'VIDEO_STARTED', videoId: id, kind: 'video' });
       return;
     }
     v.pause();
@@ -473,6 +492,7 @@
 
   // --- Démarrage : intention + durée + temps de réflexion --------------------
   function buildStart(screen) {
+    let mode = null;         // 'all' | 'long' — volontairement sans valeur par défaut
     let duration = null;
     let customDuration = ''; // texte saisi dans le champ de durée libre
     let intention = '';
@@ -493,6 +513,19 @@
           <div class="eyebrow">${esc(t('startEyebrow'))}</div>
           <h1>${esc(t('startTitle'))}</h1>
           <p class="lead">${esc(t('startLead'))}</p>
+          <div class="field">
+            <div class="label">${esc(t('startModeLabel'))}</div>
+            <div class="modes">
+              ${['all', 'long']
+                .map(
+                  (m) => `<button type="button" class="mode" data-mode="${m}" aria-pressed="${m === mode}">
+                    <strong>${esc(t(m === 'all' ? 'modeAll' : 'modeLong'))}</strong>
+                    <small>${esc(t(m === 'all' ? 'modeAllDesc' : 'modeLongDesc'))}</small>
+                  </button>`
+                )
+                .join('')}
+            </div>
+          </div>
           <div class="field">
             <div class="label">${esc(t('startDurationLabel'))}</div>
             <div class="chips">
@@ -532,8 +565,16 @@
             : missing === 1
               ? t('startHintOne')
               : t('startHintMany', missing);
-        $('#go').disabled = !(duration && missing <= 0);
+        $('#go').disabled = !(mode && duration && missing <= 0);
       };
+      const modeButtons = [...screen.querySelectorAll('.mode')];
+      for (const btn of modeButtons) {
+        btn.addEventListener('click', () => {
+          mode = btn.dataset.mode;
+          for (const b of modeButtons) b.setAttribute('aria-pressed', String(b === btn));
+          update();
+        });
+      }
       for (const chip of presetChips) {
         chip.addEventListener('click', () => {
           duration = Number(chip.dataset.d);
@@ -563,7 +604,7 @@
       stopTimer();
       screen.innerHTML = `
         <div class="card center">
-          <div class="eyebrow">${esc(t('confirmEyebrow'))}</div>
+          <div class="eyebrow">${esc(t(mode === 'long' ? 'modeLong' : 'modeAll'))}</div>
           <h1>${esc(duration === 1 ? t('confirmTitleOne') : t('confirmTitle', duration))}</h1>
           <p class="quote" id="quote"></p>
           <div class="ring">
@@ -602,7 +643,7 @@
       $('#back').addEventListener('click', renderForm);
       $('#start').addEventListener('click', async () => {
         $('#start').disabled = true;
-        await send({ type: 'START_SESSION', durationMin: duration, intention });
+        await send({ type: 'START_SESSION', durationMin: duration, intention, mode });
       });
     }
 
@@ -616,7 +657,30 @@
     const early = s.endReason === 'manual';
     const title = early ? t(pick(['endEarly1', 'endEarly2'])) : t(pick(['endTitle1', 'endTitle2', 'endTitle3', 'endTitle4']));
     const next = t(pick(['endNext1', 'endNext2', 'endNext3', 'endNext4', 'endNext5']));
-    const stats = t('endStats', fmtVideos((s.videos || []).length), fmtSpent(s.endedAt - s.startedAt), s.durationMin);
+    // Statistiques : durée réelle, bilan du jour, vidéos et/ou shorts (seulement ceux non nuls).
+    const nVideos = (s.videos || []).length;
+    const nShorts = (s.shorts || []).length;
+    const todayMs = s.todayMs ?? s.endedAt - s.startedAt;
+    const todaySessions = s.todaySessions ?? 1;
+    const tiles = [
+      { value: fmtSpent(s.endedAt - s.startedAt), label: t('statSession') },
+      {
+        value: fmtSpent(todayMs),
+        label: t('statToday'),
+        sub: todaySessions === 1 ? t('statSessionsOne') : t('statSessionsMany', todaySessions),
+      },
+    ];
+    if (nVideos > 0 || nShorts === 0) tiles.push({ value: String(nVideos), label: t(nVideos === 1 ? 'statVideo' : 'statVideos') });
+    if (nShorts > 0) tiles.push({ value: String(nShorts), label: t(nShorts === 1 ? 'statShort' : 'statShorts') });
+    const tilesHtml = tiles
+      .map(
+        (x) => `<div class="tile">
+          <div class="tile-value">${esc(x.value)}</div>
+          <div class="tile-label">${esc(x.label)}</div>
+          ${x.sub ? `<div class="tile-sub">${esc(x.sub)}</div>` : ''}
+        </div>`
+      )
+      .join('');
     const particles = Array.from({ length: 18 }, () => {
       const left = Math.round(Math.random() * 100);
       const delay = (Math.random() * 4).toFixed(2);
@@ -633,12 +697,29 @@
           <path class="check-mark" d="M38 62 L54 77 L84 45"/>
         </svg>
         <h1 class="fade d1">${esc(title)}</h1>
-        <p class="stats fade d2">${esc(stats)}</p>
+        <div class="tiles fade d2">${tilesHtml}</div>
         <p class="quote fade d3" id="quote"></p>
         <p class="lead fade d4">${esc(next)}</p>
         <button type="button" class="primary fade d5" id="close">${esc(t('endClose'))}</button>
         <button type="button" class="link fade d5" id="again">${esc(t('endAgain'))}</button>
+        <section class="history fade d5" id="history" hidden>
+          <h2>${esc(t('endTodaySessions'))}</h2>
+          <ul class="hist-list" id="hist-list"></ul>
+          <button type="button" class="link" id="all-history">${esc(t('endAllHistory'))}</button>
+        </section>
       </div>`;
+
+    // Sessions du jour (la session qui vient de finir est déjà dans l'historique).
+    browser.storage.local.get('history').then(({ history }) => {
+      const today = dayKey(s.endedAt);
+      const rows = (Array.isArray(history) ? history : []).filter((h) => dayKey(h.endedAt) === today);
+      if (!rows.length) return;
+      screen.querySelector('#hist-list').innerHTML = rows
+        .map((h) => sessionRowHtml(h, { current: h.id === s.id }))
+        .join('');
+      screen.querySelector('#history').hidden = false;
+    });
+    screen.querySelector('#all-history').addEventListener('click', () => send({ type: 'OPEN_STATS' }));
 
     screen.querySelector('#quote').textContent = t('endIntention', s.intention);
     screen.querySelector('#close').addEventListener('click', () => send({ type: 'CLOSE_TAB' }));
@@ -666,21 +747,55 @@
   // Pastille de temps restant
   // ---------------------------------------------------------------------------
   let pill = null;
+  const CONFIRM_TIMEOUT_MS = 8000; // la confirmation se replie toute seule
+
+  // Pastille : temps restant ; au survol, bouton « Terminer » ; au clic, confirmation sur place.
+  function createPill() {
+    const host = document.createElement('div');
+    host.setAttribute('data-ysess', 'pill');
+    host.style.cssText = 'all:initial;position:fixed;left:16px;bottom:16px;z-index:2147483646;';
+    // Les touches (Entrée, Espace) sur les boutons ne doivent pas déclencher les raccourcis YouTube.
+    for (const type of ['keydown', 'keyup', 'keypress']) host.addEventListener(type, (e) => e.stopPropagation());
+    const root = host.attachShadow({ mode: 'closed' });
+    root.innerHTML = `<style>${PILL_CSS}</style>
+      <div class="pill">
+        <span class="dot"></span>
+        <span class="txt"></span>
+        <button type="button" class="end">${esc(t('pillEnd'))}</button>
+        <span class="confirm">
+          <span>${esc(t('pillConfirm'))}</span>
+          <button type="button" class="yes">${esc(t('pillYes'))}</button>
+          <button type="button" class="no">${esc(t('pillNo'))}</button>
+        </span>
+      </div>`;
+    html.appendChild(host);
+    const box = root.querySelector('.pill');
+    let timer = null;
+    const closeConfirm = () => {
+      clearTimeout(timer);
+      box.classList.remove('confirming');
+    };
+    root.querySelector('.end').addEventListener('click', () => {
+      box.classList.add('confirming');
+      root.querySelector('.no').focus();
+      clearTimeout(timer);
+      timer = setTimeout(closeConfirm, CONFIRM_TIMEOUT_MS);
+    });
+    root.querySelector('.no').addEventListener('click', closeConfirm);
+    root.querySelector('.yes').addEventListener('click', () => {
+      closeConfirm();
+      send({ type: 'END_SESSION', reason: 'manual' });
+    });
+    return { host, box, txt: root.querySelector('.txt') };
+  }
+
   function updatePill() {
     if (!isRunning() || overlay) {
       if (pill) pill.host.remove();
       pill = null;
       return;
     }
-    if (!pill || !pill.host.isConnected) {
-      const host = document.createElement('div');
-      host.setAttribute('data-ysess', 'pill');
-      host.style.cssText = 'all:initial;position:fixed;left:16px;bottom:16px;z-index:2147483646;pointer-events:none;';
-      const root = host.attachShadow({ mode: 'closed' });
-      root.innerHTML = `<style>${PILL_CSS}</style><div class="pill"><span class="dot"></span><span class="txt"></span></div>`;
-      html.appendChild(host);
-      pill = { host, txt: root.querySelector('.txt'), box: root.querySelector('.pill') };
-    }
+    if (!pill || !pill.host.isConnected) pill = createPill();
     const m = minutesLeft(remainingMs());
     const onLastShort = pageType() === 'shorts' && !!lastShortFor && lastShortFor === currentVideoId;
     const text = onLastShort
@@ -713,8 +828,11 @@
     tickCount += 1;
 
     const running = isRunning();
+    if (redirectShortsToWatch()) return;
     html.classList.toggle('ysess-hide-related', running && settings.watchSuggestions === 'hide');
     html.classList.toggle('ysess-freeze-related', running && settings.watchSuggestions === 'fit');
+    html.classList.toggle('ysess-no-shorts', isLongMode());
+    if (tickCount % 4 === 0) markShortsLabels();
 
     if (running) {
       trackVideo();
@@ -741,7 +859,9 @@
     stateLoaded = true;
     render();
     filterCards();
-    html.classList.remove('ysess-pending');
+    markShortsLabels();
+    // Pendant une redirection short → lecteur classique, la page reste masquée.
+    if (!redirecting) html.classList.remove('ysess-pending');
   });
 
   browser.storage.onChanged.addListener((changes, area) => {
@@ -761,6 +881,7 @@
     }
     render();
     filterCards();
+    markShortsLabels();
   });
 
   setInterval(render, 500);
@@ -810,7 +931,25 @@
     .lead { color: #b9c0d6; font-size: 15px; line-height: 1.55; margin: 0 0 26px; }
     .lead.small { font-size: 14px; margin-bottom: 20px; }
     .quote { font-size: 16px; line-height: 1.5; color: #f3e3b5; margin: 0 0 22px; font-style: italic; overflow-wrap: anywhere; }
-    .stats { font-size: 14px; color: #a9c9c1; margin: 0 0 18px; letter-spacing: .02em; }
+    .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; margin: 6px 0 22px; }
+    .tile {
+      padding: 12px 10px; border-radius: 14px;
+      background: rgba(159,224,201,.06); border: 1px solid rgba(159,224,201,.16);
+    }
+    .tile-value { font-size: 22px; font-weight: 650; color: #eef0f6; font-variant-numeric: tabular-nums; line-height: 1.2; }
+    .tile-label { font-size: 12px; color: #a9c9c1; margin-top: 4px; letter-spacing: .02em; }
+    .tile-sub { font-size: 11px; color: #7f9a93; margin-top: 2px; }
+    .history { margin-top: 22px; padding-top: 18px; border-top: 1px solid rgba(255,255,255,.08); text-align: left; }
+    .history[hidden] { display: none; }
+    .history h2 { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: #9aa6c9; font-weight: 600; margin: 0 0 10px; }
+    .history .link { margin-top: 6px; padding-left: 0; }
+    .hist-list { list-style: none; margin: 0; padding: 0; max-height: 220px; overflow: auto; }
+    .hist-row { padding: 10px 12px; border-radius: 12px; margin-bottom: 6px; background: rgba(255,255,255,.03); }
+    .hist-row.current { background: rgba(159,224,201,.08); border: 1px solid rgba(159,224,201,.18); }
+    .hist-meta { font-size: 13px; color: #cdd3e6; font-variant-numeric: tabular-nums; }
+    .hist-tag { display: inline-block; font-size: 11px; color: #a9c9c1; border: 1px solid rgba(159,224,201,.25);
+      border-radius: 999px; padding: 0 7px; margin-left: 4px; vertical-align: 1px; }
+    .hist-intent { font-size: 13px; color: #f3e3b5; font-style: italic; margin-top: 3px; overflow-wrap: anywhere; }
     .field { margin-bottom: 22px; }
     .label { display: block; font-size: 13px; font-weight: 600; color: #cdd3e6; margin-bottom: 10px; }
     .chips { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -829,6 +968,17 @@
     }
     .chip.custom input::placeholder { color: #6f7895; text-align: left; }
     .chip.custom span { color: #b9c0d6; }
+    .modes { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; }
+    .mode {
+      font: inherit; text-align: left; padding: 12px 14px; border-radius: 14px; cursor: pointer;
+      border: 1px solid rgba(255,255,255,.16); background: transparent; color: #e3e7f3;
+      transition: background .15s, border-color .15s;
+    }
+    .mode:hover { border-color: rgba(255,255,255,.4); }
+    .mode strong { display: block; font-size: 14px; margin-bottom: 3px; }
+    .mode small { display: block; font-size: 12px; line-height: 1.4; color: #9aa6c9; }
+    .mode[aria-pressed="true"] { border-color: #e9c46a; background: rgba(233,196,106,.12); }
+    .mode[aria-pressed="true"] strong { color: #f3e3b5; }
     textarea {
       width: 100%; font: inherit; font-size: 15px; line-height: 1.5; padding: 12px 14px;
       border-radius: 12px; border: 1px solid rgba(255,255,255,.16); background: rgba(0,0,0,.25);
@@ -893,7 +1043,21 @@
       padding: 8px 12px; border-radius: 999px; box-shadow: 0 6px 20px rgba(0,0,0,.25);
       font-variant-numeric: tabular-nums;
     }
-    .dot { width: 8px; height: 8px; border-radius: 50%; background: #9fe0c9; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: #9fe0c9; flex: none; }
     .low .dot { background: #e9c46a; }
+    button {
+      font: inherit; font-size: 12px; border-radius: 999px; padding: 4px 10px; cursor: pointer;
+      border: 1px solid rgba(255,255,255,.2); background: transparent; color: #eef0f6;
+    }
+    button:hover { border-color: rgba(255,255,255,.45); }
+    button:focus-visible { outline: 2px solid #e9c46a; outline-offset: 1px; }
+    .yes { background: #e9c46a; border-color: #e9c46a; color: #1b1d27; }
+    /* Bouton « Terminer » : visible au survol ou au clavier seulement. */
+    .end { display: none; }
+    .pill:hover .end, .pill:focus-within .end { display: inline-block; }
+    /* Confirmation : remplace le contenu de la pastille. */
+    .confirm { display: none; align-items: center; gap: 6px; }
+    .confirming .confirm { display: inline-flex; }
+    .confirming .txt, .confirming .end, .confirming .dot { display: none !important; }
   `;
 })();
