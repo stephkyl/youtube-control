@@ -32,7 +32,7 @@ html.ysess-freeze-related ytd-watch-next-secondary-results-renderer ytd-continua
 /* Dernier short : rien en dessous (ni aperçu du suivant, ni flèches), pas de défilement.
    [data-ysess-after-last] est posé par le script (repérage par position) ; les sélecteurs
    suivants servent de filet si la structure de YouTube correspond. */
-html.ysess-last-short [data-ysess-after-last],
+[data-ysess-after-last],
 html.ysess-last-short ytd-reel-video-renderer[is-active] ~ ytd-reel-video-renderer,
 html.ysess-last-short .reel-video-in-sequence-new:has(ytd-reel-video-renderer[is-active]) ~ .reel-video-in-sequence-new,
 html.ysess-last-short .reel-video-in-sequence:has([is-active]) ~ .reel-video-in-sequence,

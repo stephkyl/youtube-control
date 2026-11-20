@@ -207,12 +207,15 @@
     const id = urlVideoId(type);
 
     if (id !== currentVideoId) {
+      // On quitte un short alors qu'il reste moins de 2 min : celui où l'on arrive est
+      // le dernier, sans attendre que sa vidéo soit chargée.
+      const arriving = type === 'shorts' && !!currentVideoId && shortsMaskState() === 'armed';
       currentVideoId = id;
       videoNavAt = now();
       checkedVideoId = null;
       lastTime = 0;
       shortsFinished = false;
-      lastShortFor = null;
+      lastShortFor = arriving ? id : null;
       if (tooLong && tooLong.videoId !== id) tooLong = null;
     }
     if (!id) return;
@@ -310,23 +313,43 @@
     return null;
   }
 
-  // Masque tout ce qui suit le dernier short dans le fil (y compris ce que YouTube ajoute ensuite).
-  function hideFollowingReels() {
+  // 'off'   : rien à masquer.
+  // 'armed' : moins de 2 min, le prochain short sera le dernier → on masque dès maintenant
+  //           tout ce qui vient après lui, pour qu'il n'y ait aucun aperçu en arrivant dessus.
+  // 'last'  : on est sur le dernier short → tout ce qui suit est masqué, défilement bloqué.
+  function shortsMaskState() {
+    if (!isRunning() || pageType() !== 'shorts') return 'off';
+    if (lastShortFor && lastShortFor === currentVideoId) return 'last';
+    if (session.status === 'overtime' || remainingMs() < LAST_SHORT_THRESHOLD_MS) return 'armed';
+    return 'off';
+  }
+
+  // Masque les éléments du fil situés après le short en cours, en laissant `keep` visibles
+  // (1 en mode 'armed' : le short suivant, sur lequel on va arriver).
+  function hideReelsAfter(keep) {
     const item = findCurrentReelItem();
     if (!item) return;
-    for (let sib = item.nextElementSibling; sib; sib = sib.nextElementSibling) {
+    item.removeAttribute('data-ysess-after-last');
+    let sib = item.nextElementSibling;
+    for (let i = 0; i < keep && sib; i += 1, sib = sib.nextElementSibling) sib.removeAttribute('data-ysess-after-last');
+    for (; sib; sib = sib.nextElementSibling) {
       if (!sib.hasAttribute('data-ysess-after-last')) sib.setAttribute('data-ysess-after-last', '');
     }
   }
 
-  function showFollowingReels() {
+  function showAllReels() {
     for (const el of document.querySelectorAll('[data-ysess-after-last]')) el.removeAttribute('data-ysess-after-last');
   }
 
+  function applyShortsMask() {
+    const state = shortsMaskState();
+    if (state === 'off') showAllReels();
+    else hideReelsAfter(state === 'armed' ? 1 : 0); // à chaque passage : le fil peut s'allonger
+    setLastShortMode(state === 'last');
+  }
+
   function setLastShortMode(on) {
-    if (on) hideFollowingReels(); // à chaque passage : le fil peut s'allonger
     if (on === inLastShortMode()) return;
-    if (!on) showFollowingReels();
     html.classList.toggle('ysess-last-short', on);
     if (on) {
       const el = findFeedScroller();
@@ -354,6 +377,8 @@
     'timeupdate',
     (e) => {
       if (!e.isTrusted || shortsFinished || !lastShortFor || lastShortFor !== currentVideoId) return;
+      // Tant que la vidéo n'est pas confirmée, <video> peut encore porter le short précédent.
+      if (checkedVideoId !== currentVideoId) return;
       if (pageType() !== 'shorts') return;
       const v = getMainVideo('shorts');
       if (e.target !== v || !Number.isFinite(v.duration)) return;
@@ -698,7 +723,6 @@
     const running = isRunning();
     html.classList.toggle('ysess-hide-related', running && settings.watchSuggestions === 'hide');
     html.classList.toggle('ysess-freeze-related', running && settings.watchSuggestions === 'fit');
-    setLastShortMode(running && pageType() === 'shorts' && !!lastShortFor && lastShortFor === currentVideoId);
 
     if (running) {
       trackVideo();
@@ -707,6 +731,7 @@
     } else {
       clearFilter();
     }
+    applyShortsMask(); // après trackVideo : tient compte du short qui vient d'arriver
 
     const view = desiredView();
     if (view === 'start') mountOverlay('start', buildStart);
@@ -747,6 +772,14 @@
   });
 
   setInterval(render, 500);
+
+  // Changement d'URL (passage d'un short à l'autre) : réaction en 100 ms au lieu de 500.
+  let lastHref = location.href;
+  setInterval(() => {
+    if (location.href === lastHref) return;
+    lastHref = location.href;
+    render();
+  }, 100);
 
   // ---------------------------------------------------------------------------
   // Styles

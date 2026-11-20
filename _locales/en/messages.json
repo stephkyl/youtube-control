@@ -1,0 +1,209 @@
+{
+  "extName": {
+    "message": "YouTube Session"
+  },
+  "extDescription": {
+    "message": "Set a session length: only videos that fit in the remaining time are shown, then YouTube gently closes."
+  },
+  "minutesShort": {
+    "message": "$1 min"
+  },
+  "hoursShort": {
+    "message": "$1 h"
+  },
+  "hoursMinutesShort": {
+    "message": "$1 h $2 min"
+  },
+  "startEyebrow": {
+    "message": "YouTube session"
+  },
+  "startTitle": {
+    "message": "Before you go in, set your intention."
+  },
+  "startLead": {
+    "message": "YouTube stays closed until a session is running. Pick a length and write down what you're here to do."
+  },
+  "startDurationLabel": {
+    "message": "Session length"
+  },
+  "startCustomPlaceholder": {
+    "message": "Other"
+  },
+  "startCustomLabel": {
+    "message": "Custom length in minutes"
+  },
+  "startCustomRange": {
+    "message": "Enter a whole number between $1 and $2 minutes."
+  },
+  "confirmTitleOne": {
+    "message": "1 minute to:"
+  },
+  "startIntentionLabel": {
+    "message": "What I'm here to do"
+  },
+  "startIntentionPlaceholder": {
+    "message": "E.g. watch the derailleur adjustment tutorial, then close."
+  },
+  "startHintOne": {
+    "message": "1 more character."
+  },
+  "startHintMany": {
+    "message": "$1 more characters."
+  },
+  "startCommit": {
+    "message": "I commit"
+  },
+  "confirmEyebrow": {
+    "message": "Just a moment"
+  },
+  "confirmTitle": {
+    "message": "$1 minutes to:"
+  },
+  "quote": {
+    "message": "“$1”"
+  },
+  "confirmPrompt": {
+    "message": "Breathe. Is this really what you want to do right now?"
+  },
+  "confirmWait": {
+    "message": "Wait…"
+  },
+  "confirmStart": {
+    "message": "Start the session"
+  },
+  "confirmReady": {
+    "message": "The timer starts as soon as you click."
+  },
+  "confirmBack": {
+    "message": "Edit"
+  },
+  "endTitle1": {
+    "message": "Session complete. Well done."
+  },
+  "endTitle2": {
+    "message": "All wrapped up."
+  },
+  "endTitle3": {
+    "message": "Mission accomplished."
+  },
+  "endTitle4": {
+    "message": "And that's a wrap."
+  },
+  "endEarly1": {
+    "message": "Stopping before the end takes strength."
+  },
+  "endEarly2": {
+    "message": "You chose to stop. Good call."
+  },
+  "endNext1": {
+    "message": "Get up, stretch, take a deep breath."
+  },
+  "endNext2": {
+    "message": "A glass of water, and on to the next thing."
+  },
+  "endNext3": {
+    "message": "The rest of your day is waiting."
+  },
+  "endNext4": {
+    "message": "Close the tab while it's easy."
+  },
+  "endNext5": {
+    "message": "You did what you planned."
+  },
+  "videosNone": {
+    "message": "No videos"
+  },
+  "videosOne": {
+    "message": "1 video"
+  },
+  "videosMany": {
+    "message": "$1 videos"
+  },
+  "endStats": {
+    "message": "$1 · $2 of $3 min planned"
+  },
+  "endIntention": {
+    "message": "Your intention: “$1”"
+  },
+  "endClose": {
+    "message": "Close tab"
+  },
+  "endAgain": {
+    "message": "Start a new session"
+  },
+  "tooLongEyebrow": {
+    "message": "Out of session"
+  },
+  "tooLongTitle": {
+    "message": "This video doesn't fit in your session."
+  },
+  "tooLongOvertime": {
+    "message": "Your session time is up."
+  },
+  "tooLongDetail": {
+    "message": "It has $1 left, you have $2 left."
+  },
+  "tooLongBack": {
+    "message": "Go back"
+  },
+  "tooLongHome": {
+    "message": "Suggestions"
+  },
+  "pillLeftOne": {
+    "message": "1 min left"
+  },
+  "pillLeftMany": {
+    "message": "$1 min left"
+  },
+  "lastVideo": {
+    "message": "Last video"
+  },
+  "lastShort": {
+    "message": "Last short"
+  },
+  "popupIdle": {
+    "message": "No session running. YouTube stays closed until you start one from the YouTube page."
+  },
+  "popupOpen": {
+    "message": "Open YouTube"
+  },
+  "popupSettings": {
+    "message": "Settings"
+  },
+  "popupTimeLeft": {
+    "message": "Time left"
+  },
+  "popupTimeUp": {
+    "message": "Time's up"
+  },
+  "popupOf": {
+    "message": "of $1 min"
+  },
+  "popupEnd": {
+    "message": "End the session now"
+  },
+  "optionsPageTitle": {
+    "message": "Settings · YouTube Session"
+  },
+  "optionsTitle": {
+    "message": "Settings"
+  },
+  "optWatchLegend": {
+    "message": "Suggestions while watching a video"
+  },
+  "optFitTitle": {
+    "message": "Only those that fit in the session"
+  },
+  "optFitDesc": {
+    "message": "The list isn't refilled: it gets shorter as the session goes on."
+  },
+  "optHideTitle": {
+    "message": "No suggestions"
+  },
+  "optHideDesc": {
+    "message": "Nothing beside, below or at the end of the video."
+  },
+  "optSaved": {
+    "message": "Saved. Applied immediately."
+  }
+}

@@ -1,0 +1,19 @@
+:root { color-scheme: light dark; }
+body {
+  margin: 0;
+  font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+main { max-width: 520px; padding: 16px; }
+h1 { font-size: 18px; margin: 0 0 16px; }
+fieldset { border: 0; padding: 0; margin: 0; }
+legend { font-weight: 600; margin-bottom: 10px; padding: 0; }
+.option {
+  display: flex; gap: 10px; align-items: flex-start;
+  padding: 12px; margin-bottom: 8px; border-radius: 10px; cursor: pointer;
+  border: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+}
+.option:has(input:checked) { border-color: #c99a2e; background: color-mix(in srgb, #e9c46a 12%, transparent); }
+.option input { margin-top: 3px; }
+.option strong { display: block; }
+.option small { display: block; opacity: .75; }
+.saved { min-height: 1.5em; opacity: .7; font-size: 13px; }
