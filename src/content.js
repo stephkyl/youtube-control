@@ -64,10 +64,13 @@
     return 'other';
   }
 
+  // L'URL est contrôlée par la page : on n'accepte que le format d'un identifiant YouTube.
+  const VIDEO_ID_RE = /^[A-Za-z0-9_-]{11}$/;
   function urlVideoId(type) {
-    if (type === 'watch') return new URLSearchParams(location.search).get('v');
-    if (type === 'shorts') return location.pathname.split('/')[2] || null;
-    return null;
+    let id = null;
+    if (type === 'watch') id = new URLSearchParams(location.search).get('v');
+    else if (type === 'shorts') id = location.pathname.split('/')[2];
+    return id && VIDEO_ID_RE.test(id) ? id : null;
   }
 
   function getPlayer(type) {
@@ -94,7 +97,9 @@
     try {
       const p = getPlayer(type);
       const data = p && p.wrappedJSObject && p.wrappedJSObject.getVideoData && p.wrappedJSObject.getVideoData();
-      return (data && data.video_id) || null;
+      // Valeur fournie par la page : traitée comme donnée non fiable.
+      const id = data && data.video_id;
+      return typeof id === 'string' && VIDEO_ID_RE.test(id) ? id : null;
     } catch (_) {
       return null;
     }
@@ -258,7 +263,7 @@
   document.addEventListener(
     'ended',
     (e) => {
-      if (!isRunning() || pageType() !== 'watch') return;
+      if (!e.isTrusted || !isRunning() || pageType() !== 'watch') return;
       if (e.target !== getMainVideo('watch') || isAdShowing('watch')) return;
       send({ type: 'VIDEO_ENDED' });
     },
@@ -285,7 +290,8 @@
     for (const t of ['keydown', 'keyup', 'keypress', 'wheel', 'touchmove']) {
       host.addEventListener(t, (e) => e.stopPropagation());
     }
-    const root = host.attachShadow({ mode: 'open' });
+    // 'closed' : les scripts de YouTube ne peuvent pas lire le contenu (intention, bilan).
+    const root = host.attachShadow({ mode: 'closed' });
     root.innerHTML = `<style>${OVERLAY_CSS}</style>`;
     const screen = document.createElement('div');
     screen.className = `screen screen-${view}`;
@@ -493,7 +499,7 @@
       const host = document.createElement('div');
       host.setAttribute('data-ysess', 'pill');
       host.style.cssText = 'all:initial;position:fixed;left:16px;bottom:16px;z-index:2147483646;pointer-events:none;';
-      const root = host.attachShadow({ mode: 'open' });
+      const root = host.attachShadow({ mode: 'closed' });
       root.innerHTML = `<style>${PILL_CSS}</style><div class="pill"><span class="dot"></span><span class="txt"></span></div>`;
       html.appendChild(host);
       pill = { host, txt: root.querySelector('.txt'), box: root.querySelector('.pill') };

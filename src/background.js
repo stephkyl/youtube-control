@@ -14,6 +14,9 @@ const LAST_VIDEO_THRESHOLD_MS = 3 * 60 * 1000; // vidéo terminée avec < 3 min 
 const OVERTIME_CAP_MS = 30 * 60 * 1000;        // garde-fou si une vidéo s'éternise après l'heure
 const MIN_DURATION = 5;
 const MAX_DURATION = 180;
+const MAX_VIDEOS = 500;
+const VIDEO_ID_RE = /^[A-Za-z0-9_-]{11}$/;
+const YOUTUBE_URLS = ['*://www.youtube.com/*', '*://m.youtube.com/*'];
 
 let session = null;
 const ready = browser.storage.local.get('session').then((r) => {
@@ -53,7 +56,8 @@ async function endSession(reason) {
 }
 
 async function anyTabPlaying() {
-  const tabs = await browser.tabs.query({ url: ['*://*.youtube.com/*'] });
+  // Pas besoin de la permission "tabs" : les permissions d'hôte suffisent pour filtrer par URL.
+  const tabs = await browser.tabs.query({ url: YOUTUBE_URLS });
   const answers = await Promise.all(
     tabs.map((t) => browser.tabs.sendMessage(t.id, { type: 'IS_PLAYING' }).catch(() => false))
   );
@@ -94,8 +98,9 @@ const handlers = {
   START_SESSION: (msg) => startSession(msg),
   END_SESSION: (msg) => endSession(msg.reason || 'manual'),
   async VIDEO_STARTED(msg) {
-    if (!session || session.status === 'ended' || !msg.videoId) return;
-    if (session.videos.includes(msg.videoId)) return;
+    if (!session || session.status === 'ended') return;
+    if (typeof msg.videoId !== 'string' || !VIDEO_ID_RE.test(msg.videoId)) return;
+    if (session.videos.length >= MAX_VIDEOS || session.videos.includes(msg.videoId)) return;
     session = { ...session, videos: [...session.videos, msg.videoId] };
     await save();
   },
@@ -103,7 +108,7 @@ const handlers = {
     if (!session || session.status === 'ended') return;
     if (session.endsAt - Date.now() < LAST_VIDEO_THRESHOLD_MS) await endSession('last-video');
   },
-  CLOSE_TAB: (msg, sender) => {
+  CLOSE_TAB: (_msg, sender) => {
     if (sender.tab) return browser.tabs.remove(sender.tab.id);
   },
 };
