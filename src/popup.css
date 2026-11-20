@@ -1,31 +1,32 @@
+/* Couleurs : src/theme.css */
 * { box-sizing: border-box; }
 body {
   margin: 0;
   width: 300px;
   font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  color: #eef0f6;
-  background: #10121a;
+  color: var(--ys-text);
+  background: var(--ys-bg);
 }
 main { padding: 18px; }
-.eyebrow { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: #9aa6c9; margin-bottom: 6px; }
+.eyebrow { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--ys-muted); margin-bottom: 6px; }
 .big { font-size: 30px; font-weight: 650; font-variant-numeric: tabular-nums; margin: 0 0 4px; }
-.muted { color: #9aa6c9; margin: 0 0 14px; }
+.muted { color: var(--ys-muted); margin: 0 0 14px; }
 .mode {
-  display: inline-block; font-size: 11px; font-weight: 600; color: #f3e3b5;
-  border: 1px solid rgba(233,196,106,.4); border-radius: 999px; padding: 2px 8px; margin-bottom: 10px;
+  display: inline-block; font-size: 11px; font-weight: 600; color: var(--ys-quote);
+  border: 1px solid color-mix(in srgb, var(--ys-accent) 40%, transparent);
+  border-radius: 999px; padding: 2px 8px; margin-bottom: 10px;
 }
-.today { color: #9aa6c9; font-size: 12px; margin: 0 0 12px; }
-.quote { color: #f3e3b5; font-style: italic; margin: 0 0 16px; overflow-wrap: anywhere; }
+.today { color: var(--ys-muted); font-size: 12px; margin: 0 0 12px; }
+.quote { color: var(--ys-quote); font-style: italic; margin: 0 0 16px; overflow-wrap: anywhere; }
 .bar { height: 6px; border-radius: 999px; background: rgba(255,255,255,.1); overflow: hidden; margin-bottom: 16px; }
-.bar > div { height: 100%; background: #e9c46a; transition: width 1s linear; }
+.bar > div { height: 100%; background: var(--ys-accent); transition: width 1s linear; }
 button {
   width: 100%; font: inherit; font-weight: 600; padding: 10px 12px; border-radius: 10px; cursor: pointer;
-  border: 1px solid rgba(255,255,255,.2); background: transparent; color: #eef0f6;
+  border: 1px solid rgba(255,255,255,.2); background: transparent; color: var(--ys-text);
 }
-button.primary { border: 0; background: #e9c46a; color: #1b1d27; }
+button.primary { border: 0; background: var(--ys-accent); color: var(--ys-accent-ink); }
 .links { display: flex; justify-content: center; gap: 4px; margin-top: 4px; }
-.links button.link { width: auto; }
 button.link {
-  border: 0; background: none; color: #9aa6c9; font-weight: 400; font-size: 13px;
+  width: auto; border: 0; background: none; color: var(--ys-muted); font-weight: 400; font-size: 13px;
   text-decoration: underline; text-underline-offset: 3px; margin-top: 8px; padding: 6px;
 }

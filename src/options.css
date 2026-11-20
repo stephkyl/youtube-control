@@ -12,7 +12,7 @@ legend { font-weight: 600; margin-bottom: 10px; padding: 0; }
   padding: 12px; margin-bottom: 8px; border-radius: 10px; cursor: pointer;
   border: 1px solid color-mix(in srgb, currentColor 18%, transparent);
 }
-.option:has(input:checked) { border-color: #c99a2e; background: color-mix(in srgb, #e9c46a 12%, transparent); }
+.option:has(input:checked) { border-color: var(--ys-accent); background: color-mix(in srgb, var(--ys-accent) 12%, transparent); }
 .option input { margin-top: 3px; }
 .option strong { display: block; }
 .option small { display: block; opacity: .75; }

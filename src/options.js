@@ -1,18 +1,18 @@
 'use strict';
 
-const t = (key) => browser.i18n.getMessage(key);
-document.documentElement.lang = browser.i18n.getUILanguage();
+const { t } = YS;
+
+document.documentElement.lang = YS.uiLang;
 document.title = t('optionsPageTitle');
 for (const node of document.querySelectorAll('[data-i18n]')) node.textContent = t(node.dataset.i18n);
 
-const DEFAULT_SETTINGS = { watchSuggestions: 'fit' };
 const radios = [...document.querySelectorAll('input[name="watchSuggestions"]')];
 const saved = document.getElementById('saved');
-let settings = { ...DEFAULT_SETTINGS };
+let settings = YS.withDefaultSettings();
 
 browser.storage.local.get('settings').then((r) => {
-  settings = { ...DEFAULT_SETTINGS, ...r.settings };
-  for (const r of radios) r.checked = r.value === settings.watchSuggestions;
+  settings = YS.withDefaultSettings(r.settings);
+  for (const radio of radios) radio.checked = radio.value === settings.watchSuggestions;
 });
 
 for (const radio of radios) {

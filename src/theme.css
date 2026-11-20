@@ -1,0 +1,26 @@
+/* Palette commune à tous les écrans de l'extension. Préfixe --ys- : pas de collision avec YouTube.
+   Le manifeste l'injecte aussi dans YouTube : les variables CSS traversent le Shadow DOM
+   par héritage (et `all: initial` ne les réinitialise pas). */
+:root {
+  --ys-bg: #10121a;
+  --ys-glow-1: #26345e;
+  --ys-glow-2: #3a2a55;
+  --ys-end-bg: #0f1716;
+  --ys-end-glow-1: #1f5a52;
+  --ys-end-glow-2: #6a4a2a;
+
+  --ys-text: #eef0f6;
+  --ys-text-soft: #b9c0d6;
+  --ys-label: #cdd3e6;
+  --ys-muted: #9aa6c9;
+  --ys-faint: #8d96b3;
+  --ys-placeholder: #6f7895;
+
+  --ys-accent: #e9c46a;
+  --ys-accent-ink: #1b1d27;
+  --ys-quote: #f3e3b5;
+  --ys-mint: #9fe0c9;
+  --ys-mint-soft: #a9c9c1;
+  --ys-mint-faint: #7f9a93;
+  --ys-danger: #f2a39d;
+}

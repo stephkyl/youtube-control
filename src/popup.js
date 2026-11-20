@@ -1,113 +1,106 @@
 'use strict';
 
-const { t, dayKey, midnightOf, fmtSpent, fmtCounts } = YS;
-const fmtMinutes = (ms) => t('minutesShort', Math.max(1, Math.ceil(ms / 60000)));
+const { config, MSG, t, plural, esc, dayKey, midnightOf, fmtSpent, fmtLeft, fmtCounts } = YS;
+
+// --- État ---------------------------------------------------------------------
+let session = null;
 let daily = null;
+let renderedKey = null; // évite de reconstruire l'interface à chaque seconde
+let refs = {}; // éléments mis à jour chaque seconde
+
+document.documentElement.lang = YS.uiLang;
+document.title = t('extName');
+const app = document.getElementById('app');
+
+// --- Textes ---------------------------------------------------------------------
 
 // Bilan du jour : sessions terminées depuis minuit + partie déjà écoulée de la session en cours.
 function todayText(running) {
   const now = Date.now();
-  const base = daily && daily.day === dayKey(now) ? daily : { totalMs: 0, sessions: 0 };
+  const base = daily?.day === dayKey(now) ? daily : { totalMs: 0, sessions: 0 };
   let total = base.totalMs;
   let count = base.sessions;
   if (running) {
     total += Math.max(0, now - Math.max(session.startedAt, midnightOf(now)));
     count += 1;
   }
-  const sessions = count === 1 ? t('statSessionsOne') : t('statSessionsMany', count);
-  return t('popupToday', fmtSpent(total), sessions);
+  return t('popupToday', fmtSpent(total), plural(count, 'statSessionsOne', 'statSessionsMany'));
 }
 
-document.documentElement.lang = YS.uiLang;
-document.title = t('extName');
+// --- Rendu ----------------------------------------------------------------------
+const footerLinks = () => `
+  <div class="links">
+    <button type="button" class="link" data-action="stats">${esc(t('popupStats'))}</button>
+    <button type="button" class="link" data-action="settings">${esc(t('popupSettings'))}</button>
+  </div>`;
 
-const app = document.getElementById('app');
-let session = null;
-let renderedKey = null;
+const idleHtml = () => `
+  <div class="eyebrow">${esc(t('extName'))}</div>
+  <p class="muted">${esc(t('popupIdle'))}</p>
+  <p class="today" data-ref="today"></p>
+  <button type="button" class="primary" data-action="open">${esc(t('popupOpen'))}</button>
+  ${footerLinks()}`;
 
-// Construit l'interface sans innerHTML : aucun texte n'est interprété comme du HTML.
-function el(tag, props = {}, children = []) {
-  const node = document.createElement(tag);
-  Object.assign(node, props);
-  node.append(...children);
-  return node;
-}
+const runningHtml = () => `
+  <div class="mode">${esc(t(session.mode === 'long' ? 'modeLong' : 'modeAll'))}</div>
+  <div class="eyebrow">${esc(t(session.status === 'overtime' ? 'popupTimeUp' : 'popupTimeLeft'))}</div>
+  <p class="big" data-ref="left"></p>
+  <p class="muted" data-ref="sub"></p>
+  <div class="bar"><div data-ref="bar"></div></div>
+  <p class="quote">${esc(t('quote', session.intention))}</p>
+  <p class="today" data-ref="today"></p>
+  <button type="button" data-action="end">${esc(t('popupEnd'))}</button>
+  ${footerLinks()}`;
 
-// Liens du bas : historique (nouvel onglet) et réglages.
-function settingsLink() {
-  return el('div', { className: 'links' }, [
-    el('button', {
-      className: 'link',
-      textContent: t('popupStats'),
-      onclick: () => {
-        browser.tabs.create({ url: browser.runtime.getURL('src/stats.html') });
-        window.close();
-      },
-    }),
-    el('button', { className: 'link', textContent: t('popupSettings'), onclick: () => browser.runtime.openOptionsPage() }),
-  ]);
-}
+const actions = {
+  open() {
+    browser.tabs.create({ url: 'https://www.youtube.com/' });
+    window.close();
+  },
+  end: () => browser.runtime.sendMessage({ type: MSG.END_SESSION, reason: 'manual' }),
+  stats() {
+    browser.tabs.create({ url: browser.runtime.getURL(config.STATS_PAGE) });
+    window.close();
+  },
+  settings: () => browser.runtime.openOptionsPage(),
+};
 
 function render() {
-  const running = session && session.status !== 'ended';
+  const running = Boolean(session && session.status !== 'ended');
   const key = running ? `${session.id}-${session.status}` : 'idle';
 
   if (key !== renderedKey) {
     renderedKey = key;
-    if (!running) {
-      app.replaceChildren(
-        el('div', { className: 'eyebrow', textContent: t('extName') }),
-        el('p', { className: 'muted', textContent: t('popupIdle') }),
-        el('p', { className: 'today', id: 'today' }),
-        el('button', {
-          className: 'primary',
-          textContent: t('popupOpen'),
-          onclick: () => {
-            browser.tabs.create({ url: 'https://www.youtube.com/' });
-            window.close();
-          },
-        }),
-        settingsLink()
-      );
-    } else {
-      app.replaceChildren(
-        el('div', { className: 'mode', textContent: t(session.mode === 'long' ? 'modeLong' : 'modeAll') }),
-        el('div', { className: 'eyebrow', textContent: t(session.status === 'overtime' ? 'popupTimeUp' : 'popupTimeLeft') }),
-        el('p', { className: 'big', id: 'left' }),
-        el('p', { className: 'muted', id: 'sub' }),
-        el('div', { className: 'bar' }, [el('div', { id: 'bar' })]),
-        el('p', { className: 'quote', textContent: t('quote', session.intention) }),
-        el('p', { className: 'today', id: 'today' }),
-        el('button', {
-          textContent: t('popupEnd'),
-          onclick: () => browser.runtime.sendMessage({ type: 'END_SESSION', reason: 'manual' }),
-        }),
-        settingsLink()
-      );
-    }
+    app.innerHTML = running ? runningHtml() : idleHtml();
+    refs = Object.fromEntries([...app.querySelectorAll('[data-ref]')].map((node) => [node.dataset.ref, node]));
   }
 
   if (running) {
-    const total = session.endsAt - session.startedAt;
     const left = Math.max(0, session.endsAt - Date.now());
-    document.getElementById('left').textContent = session.status === 'overtime' ? t('lastVideo') : fmtMinutes(left);
-    const nVideos = (session.videos || []).length;
-    const nShorts = (session.shorts || []).length;
-    document.getElementById('sub').textContent = [t('popupOf', session.durationMin), ...fmtCounts(nVideos, nShorts)].join(' · ');
-    document.getElementById('bar').style.width = `${(left / total) * 100}%`;
+    refs.left.textContent = session.status === 'overtime' ? t('lastVideo') : fmtLeft(left);
+    refs.sub.textContent = [t('popupOf', session.durationMin), ...fmtCounts(session.videos.length, session.shorts.length)].join(' · ');
+    refs.bar.style.width = `${(left / (session.endsAt - session.startedAt)) * 100}%`;
   }
-  document.getElementById('today').textContent = todayText(running);
+  refs.today.textContent = todayText(running);
 }
 
+app.addEventListener('click', (e) => {
+  const action = e.target.closest('[data-action]')?.dataset.action;
+  if (action) actions[action]();
+});
+
+// --- Données ----------------------------------------------------------------------
 browser.storage.local.get(['session', 'daily']).then((r) => {
-  session = r.session || null;
+  session = YS.normalizeSession(r.session);
   daily = r.daily || null;
   render();
 });
+
 browser.storage.onChanged.addListener((changes, area) => {
-  if (area !== 'local') return;
+  if (area !== 'local' || !(changes.session || changes.daily)) return;
   if (changes.daily) daily = changes.daily.newValue || null;
-  if (changes.session) session = changes.session.newValue || null;
-  if (changes.session || changes.daily) render();
+  if (changes.session) session = YS.normalizeSession(changes.session.newValue);
+  render();
 });
+
 setInterval(render, 1000);

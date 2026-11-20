@@ -1,0 +1,25 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="theme.css">
+  <link rel="stylesheet" href="stats.css">
+</head>
+<body>
+  <main>
+    <header>
+      <div class="eyebrow" data-i18n="extName"></div>
+      <h1 data-i18n="statsTitle"></h1>
+    </header>
+    <section class="tiles" id="tiles"></section>
+    <p class="empty" id="empty" data-i18n="statsEmpty" hidden></p>
+    <div id="days"></div>
+    <footer>
+      <button type="button" id="clear" class="danger" data-i18n="statsClear" hidden></button>
+    </footer>
+  </main>
+  <script src="shared.js"></script>
+  <script src="stats.js"></script>
+</body>
+</html>

@@ -39,9 +39,19 @@ Le module reste chargé jusqu'au redémarrage de Firefox.
 
 ## Fichiers
 
-- `src/background.js` : état de la session, minuteur et clôture.
-- `src/content.js` : filtrage des suggestions, suivi de la vidéo et écrans (démarrage, fin, hors session).
-- `src/shared.js` : utilitaires communs (traductions, formatage des durées, affichage d'une session de l'historique).
+- `src/shared.js` : constantes, types de messages et utilitaires communs à tous les scripts (objet `YS`).
+- `src/theme.css` : palette de couleurs commune (variables `--ys-*`).
+- `src/background.js` : état de la session, minuteur, clôture, bilan du jour et historique.
+- `src/content/` : scripts injectés dans YouTube, chargés dans cet ordre (objet `YSC`) :
+  - `core.js` : délais et seuils, état partagé, accès au lecteur ;
+  - `styles.js` : styles des écrans et de la pastille ;
+  - `filter.js` : filtrage des suggestions, masquage des Shorts en session « vidéos longues » ;
+  - `shorts.js` : dernier short (masquage de la suite du fil, blocage du défilement) ;
+  - `video.js` : suivi de la vidéo affichée (tient-elle dans le temps restant ?) ;
+  - `overlays.js` : écrans de démarrage, de fin et « hors session » ;
+  - `pill.js` : pastille de temps restant ;
+  - `main.js` : point d'entrée, boucle de rafraîchissement.
+- `src/content.css` : règles de masquage, pilotées par des classes et attributs posés par les scripts.
 - `src/popup.*` : temps restant, bilan du jour et bouton d'arrêt anticipé.
 - `src/stats.*` : page d'historique des sessions.
 - `src/options.*` : réglages.

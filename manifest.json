@@ -22,8 +22,18 @@
   "content_scripts": [
     {
       "matches": ["*://www.youtube.com/*", "*://m.youtube.com/*"],
-      "js": ["src/shared.js", "src/content.js"],
-      "css": ["src/content.css"],
+      "js": [
+        "src/shared.js",
+        "src/content/core.js",
+        "src/content/styles.js",
+        "src/content/filter.js",
+        "src/content/shorts.js",
+        "src/content/video.js",
+        "src/content/overlays.js",
+        "src/content/pill.js",
+        "src/content/main.js"
+      ],
+      "css": ["src/theme.css", "src/content.css"],
       "run_at": "document_start"
     }
   ],
