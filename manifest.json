@@ -1,0 +1,34 @@
+{
+  "manifest_version": 2,
+  "name": "Session YouTube",
+  "version": "0.1.0",
+  "description": "Définis une durée de session : seules les vidéos qui tiennent dans le temps restant sont proposées, puis YouTube se referme en douceur.",
+  "icons": {
+    "48": "icons/icon.svg",
+    "96": "icons/icon.svg"
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "session-youtube@local",
+      "strict_min_version": "109.0"
+    }
+  },
+  "permissions": ["storage", "tabs", "*://*.youtube.com/*"],
+  "background": {
+    "scripts": ["src/background.js"],
+    "persistent": true
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://*.youtube.com/*"],
+      "js": ["src/content.js"],
+      "css": ["src/content.css"],
+      "run_at": "document_start"
+    }
+  ],
+  "browser_action": {
+    "default_title": "Session YouTube",
+    "default_popup": "src/popup.html",
+    "default_icon": "icons/icon.svg"
+  }
+}

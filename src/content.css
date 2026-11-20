@@ -1,0 +1,20 @@
+/* Évite d'apercevoir YouTube avant de savoir si une session est en cours. */
+html.ysess-pending body {
+  visibility: hidden !important;
+}
+
+/* Page verrouillée (pas de session, fin de session, vidéo trop longue). */
+html.ysess-locked,
+html.ysess-locked body {
+  overflow: hidden !important;
+}
+
+/* Vidéos qui ne tiennent pas dans le temps restant. */
+[data-ysess-hidden] {
+  display: none !important;
+}
+
+/* Quand il ne reste presque plus rien, inutile de charger des pages de suggestions vides. */
+html.ysess-scarce ytd-continuation-item-renderer {
+  display: none !important;
+}
