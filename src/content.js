@@ -10,7 +10,7 @@
   const MIN_INTENTION = 10;              // caractères
   const COUNTDOWN_S = 10;                // temps de réflexion avant de pouvoir démarrer
   const FIT_TOLERANCE_MS = 5000;         // marge pour l'arrondi des durées affichées
-  const END_SCREEN_TTL = 30 * 60 * 1000; // l'écran de fin reste affiché 30 min, puis formulaire
+  const END_SCREEN_TTL = 1 * 60 * 1000; // l'écran de fin reste affiché 30 min, puis formulaire
   const SCARCE_MS = 2 * 60 * 1000;       // en dessous : on arrête de charger des suggestions
   const LAST_SHORT_THRESHOLD_MS = 2 * 60 * 1000; // short commencé à moins de 2 min de la fin → le dernier
 
