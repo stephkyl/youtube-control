@@ -4,7 +4,7 @@
 // et rafraîchit la page. Tout passe par refresh().
 (() => {
   const { MSG } = YS;
-  const { T, state, resetVideoState, isRunning, isLongMode, pauseAllVideos } = YSC;
+  const { T, state, resetVideoState, isRunning, isOneVideo, hidesShorts, isAwayFromChosenVideo, pauseAllVideos } = YSC;
   const html = document.documentElement;
 
   // Écran plein page à afficher, ou null.
@@ -16,15 +16,18 @@
       return recent && state.dismissedEndFor !== session.id ? 'end' : 'start';
     }
     if (state.video.tooLong) return 'toolong';
+    if (isAwayFromChosenVideo()) return 'chosen';
     return null;
   }
 
   // Classes posées sur <html> : elles pilotent les règles de content.css.
   function applyPageClasses() {
     const running = isRunning();
-    html.classList.toggle('ysess-hide-related', running && state.settings.watchSuggestions === 'hide');
-    html.classList.toggle('ysess-freeze-related', running && state.settings.watchSuggestions === 'fit');
-    html.classList.toggle('ysess-no-shorts', isLongMode());
+    // Mode 'one' : aucune suggestion autour de la vidéo, quel que soit le réglage.
+    const hideRelated = isOneVideo() || state.settings.watchSuggestions === 'hide';
+    html.classList.toggle('ysess-hide-related', running && hideRelated);
+    html.classList.toggle('ysess-freeze-related', running && !hideRelated);
+    html.classList.toggle('ysess-no-shorts', hidesShorts());
   }
 
   // 1. Mettre l'état à jour (vidéo affichée, verdict), 2. l'appliquer à la page.

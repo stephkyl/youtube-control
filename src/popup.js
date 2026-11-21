@@ -1,6 +1,6 @@
 'use strict';
 
-const { config, MSG, t, plural, esc, midnightOf, fmtSpent, fmtLeft, fmtCounts, totalsSince } = YS;
+const { config, MSG, t, plural, modeLabel, esc, midnightOf, fmtSpent, fmtLeft, fmtCounts, totalsSince } = YS;
 
 // --- État ---------------------------------------------------------------------
 let session = null;
@@ -40,8 +40,17 @@ const idleHtml = () => `
   <button type="button" class="primary" data-action="open">${esc(t('popupOpen'))}</button>
   ${footerLinks()}`;
 
+// Session « une vidéo » : pas de minuteur, seulement où on en est.
+const oneVideoHtml = () => `
+  <div class="mode">${esc(modeLabel(session.mode))}</div>
+  <p class="big">${esc(t(session.chosenVideo ? 'pillYourVideo' : 'pillChooseVideo'))}</p>
+  <p class="quote">${esc(t('quote', session.intention))}</p>
+  <p class="today" data-ref="today"></p>
+  <button type="button" data-action="end">${esc(t('popupEnd'))}</button>
+  ${footerLinks()}`;
+
 const runningHtml = () => `
-  <div class="mode">${esc(t(session.mode === 'long' ? 'modeLong' : 'modeAll'))}</div>
+  <div class="mode">${esc(modeLabel(session.mode))}</div>
   <div class="eyebrow">${esc(t(session.status === 'overtime' ? 'popupTimeUp' : 'popupTimeLeft'))}</div>
   <p class="big" data-ref="left"></p>
   <p class="muted" data-ref="sub"></p>
@@ -65,15 +74,17 @@ const actions = {
 
 function render() {
   const running = Boolean(session && session.status !== 'ended');
-  const key = running ? `${session.id}-${session.status}` : 'idle';
+  const oneVideo = running && session.mode === 'one';
+  const key = running ? `${session.id}-${session.status}-${session.chosenVideo}` : 'idle';
 
   if (key !== renderedKey) {
     renderedKey = key;
-    app.innerHTML = running ? runningHtml() : idleHtml();
+    if (!running) app.innerHTML = idleHtml();
+    else app.innerHTML = oneVideo ? oneVideoHtml() : runningHtml();
     refs = Object.fromEntries([...app.querySelectorAll('[data-ref]')].map((node) => [node.dataset.ref, node]));
   }
 
-  if (running) {
+  if (running && !oneVideo) {
     const left = Math.max(0, session.endsAt - Date.now());
     refs.left.textContent = session.status === 'overtime' ? t('lastVideo') : fmtLeft(left);
     refs.sub.textContent = [t('popupOf', session.durationMin), ...fmtCounts(session.videos.length, session.shorts.length)].join(' · ');

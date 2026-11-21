@@ -10,7 +10,9 @@ var YS = (() => {
     MAX_DURATION: 1440, // minutes, 1 jour max
     MIN_INTENTION: 10, // caractères
     MAX_INTENTION: 200,
-    MODES: ['all', 'long'], // 'all' = shorts et vidéos ; 'long' = vidéos longues uniquement
+    // 'all' = shorts et vidéos ; 'long' = vidéos longues uniquement ;
+    // 'one' = une seule vidéo, sans limite de temps (pas de durée, endsAt = null).
+    MODES: ['all', 'long', 'one'],
     // watchSuggestions : 'fit' = suggestions qui tiennent dans la session (la liste raccourcit
     // sans être complétée) ; 'hide' = aucune suggestion pendant la lecture.
     DEFAULT_SETTINGS: { watchSuggestions: 'fit' },
@@ -40,6 +42,8 @@ var YS = (() => {
   // Traductions : _locales/en (par défaut) et _locales/fr, selon la langue de Firefox.
   const t = (key, ...subs) => browser.i18n.getMessage(key, subs.map(String));
   const plural = (n, oneKey, manyKey) => (n === 1 ? t(oneKey) : t(manyKey, n));
+  const MODE_LABELS = { all: 'modeAll', long: 'modeLong', one: 'modeOne' };
+  const modeLabel = (mode) => t(MODE_LABELS[mode]);
   const uiLang = browser.i18n.getUILanguage();
 
   const esc = (s) =>
@@ -111,7 +115,7 @@ var YS = (() => {
   return {
     config, MSG,
     withDefaultSettings, isValidVideoId,
-    t, plural, uiLang, esc,
+    t, plural, modeLabel, uiLang, esc,
     DAY_MS, dayKey, midnightOf, fmtClock, fmtDayLabel,
     fmtSpent, minutesLeft, fmtLeft, countsToShow, fmtCounts,
     totalsSince,

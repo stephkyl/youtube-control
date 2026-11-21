@@ -44,7 +44,7 @@ YSC.styles = (() => {
     /* Formulaire de démarrage */
     .field { margin-bottom: 22px; }
     .label { display: block; font-size: 13px; font-weight: 600; color: var(--ys-label); margin-bottom: 10px; }
-    .modes { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; }
+    .modes { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
     .mode {
       font: inherit; text-align: left; padding: 12px 14px; border-radius: 14px; cursor: pointer;
       border: 1px solid rgba(255,255,255,.16); background: transparent; color: var(--ys-text);

@@ -21,7 +21,7 @@
     "message": "Before you go in, set your intention."
   },
   "startLead": {
-    "message": "YouTube stays closed until a session is running. Pick a length and write down what you're here to do."
+    "message": "YouTube stays closed until a session is running. Pick a session type and write down what you're here to do."
   },
   "startModeLabel": {
     "message": "Session type"
@@ -37,6 +37,12 @@
   },
   "modeLongDesc": {
     "message": "Shorts disappear from YouTube."
+  },
+  "modeOne": {
+    "message": "One video"
+  },
+  "modeOneDesc": {
+    "message": "No time limit, but a single video. The session ends with it."
   },
   "startDurationLabel": {
     "message": "Session length"
@@ -70,6 +76,9 @@
   },
   "confirmTitle": {
     "message": "$1 minutes to:"
+  },
+  "confirmTitleOneVideo": {
+    "message": "One video to:"
   },
   "quote": {
     "message": "“$1”"
@@ -211,6 +220,21 @@
   },
   "tooLongDetail": {
     "message": "It has $1 left, you have $2 left."
+  },
+  "chosenTitle": {
+    "message": "You've already picked your video."
+  },
+  "chosenLead": {
+    "message": "This session allows a single video. It ends when the video does."
+  },
+  "chosenBack": {
+    "message": "Back to my video"
+  },
+  "pillChooseVideo": {
+    "message": "Pick your video"
+  },
+  "pillYourVideo": {
+    "message": "Your video"
   },
   "pillLeftOne": {
     "message": "1 min left"

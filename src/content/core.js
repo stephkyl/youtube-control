@@ -56,8 +56,17 @@ var YSC = (() => {
   // --- Session ----------------------------------------------------------------
   const isRunning = () => state.session?.status === 'active' || state.session?.status === 'overtime';
   const isOvertime = () => state.session?.status === 'overtime';
-  const isLongMode = () => isRunning() && state.session.mode === 'long';
-  const remainingMs = () => (state.session?.status === 'active' ? Math.max(0, state.session.endsAt - Date.now()) : 0);
+  const isOneVideo = () => isRunning() && state.session.mode === 'one'; // une seule vidéo, sans limite de temps
+  const hidesShorts = () => isRunning() && state.session.mode !== 'all'; // 'long' et 'one'
+  // Temps restant ; 0 hors session et en mode 'one' (pas d'heure de fin).
+  const remainingMs = () =>
+    state.session?.status === 'active' && state.session.endsAt ? Math.max(0, state.session.endsAt - Date.now()) : 0;
+
+  // Mode 'one', vidéo déjà choisie, et la page affichée n'est pas cette vidéo.
+  function isAwayFromChosenVideo() {
+    const chosen = isOneVideo() && state.session.chosenVideo;
+    return Boolean(chosen) && !(pageType() === 'watch' && urlVideoId('watch') === chosen);
+  }
   const send = (msg) => browser.runtime.sendMessage(msg).catch(() => undefined);
 
   // --- Page et lecteur --------------------------------------------------------
@@ -109,7 +118,7 @@ var YSC = (() => {
 
   return {
     T, state, resetVideoState,
-    isRunning, isOvertime, isLongMode, remainingMs, send,
+    isRunning, isOvertime, isOneVideo, hidesShorts, isAwayFromChosenVideo, remainingMs, send,
     pageType, urlVideoId, isOnLastShort, getPlayer, getMainVideo, isAdShowing, playerVideoId, pauseAllVideos,
   };
 })();

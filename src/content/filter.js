@@ -1,9 +1,9 @@
 'use strict';
 
 // Filtrage des suggestions selon le temps restant, et masquage des Shorts en session
-// « vidéos longues ». Les règles d'affichage correspondantes sont dans content.css.
+// « vidéos longues » ou « une vidéo ». Les règles d'affichage correspondantes sont dans content.css.
 YSC.filter = (() => {
-  const { T, state, isRunning, isLongMode, remainingMs, pageType, urlVideoId } = YSC;
+  const { T, state, isRunning, isOneVideo, hidesShorts, remainingMs, pageType, urlVideoId } = YSC;
   const html = document.documentElement;
 
   const CARD_SEL = [
@@ -74,7 +74,7 @@ YSC.filter = (() => {
   }
 
   function markShortsLabels() {
-    if (!isLongMode()) {
+    if (!hidesShorts()) {
       for (const el of document.querySelectorAll('[data-ysess-noshorts]')) el.removeAttribute('data-ysess-noshorts');
       return;
     }
@@ -83,11 +83,11 @@ YSC.filter = (() => {
     }
   }
 
-  // Short ouvert par lien direct en session « vidéos longues » : lecteur classique.
+  // Short ouvert par lien direct en session « vidéos longues » ou « une vidéo » : lecteur classique.
   // Renvoie true si une redirection est en cours (rien d'autre à faire sur cette page).
   function redirectShortsToWatch() {
     if (state.redirecting) return true;
-    if (!isLongMode() || pageType() !== 'shorts') return false;
+    if (!hidesShorts() || pageType() !== 'shorts') return false;
     state.redirecting = true;
     const id = urlVideoId('shorts');
     location.replace(id ? `/watch?v=${id}` : '/');
@@ -97,7 +97,8 @@ YSC.filter = (() => {
   let lastRunAt = 0;
   function run() {
     lastRunAt = Date.now();
-    if (isRunning()) filterCards();
+    // Mode 'one' : pas de limite de temps, donc rien à filtrer par durée.
+    if (isRunning() && !isOneVideo()) filterCards();
     else clearFilter();
     markShortsLabels();
   }

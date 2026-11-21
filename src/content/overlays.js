@@ -1,16 +1,19 @@
 'use strict';
 
-// Écrans plein page : démarrage (intention + durée + réflexion), fin de session, vidéo hors session.
+// Écrans plein page : démarrage (intention + durée + réflexion), fin de session, vidéo hors session,
+// autre page alors que la vidéo d'une session « une vidéo » est déjà choisie.
 // Chacun vit dans un Shadow DOM fermé : isolé du CSS de YouTube et illisible par ses scripts.
 YSC.overlays = (() => {
-  const { config, MSG, t, plural, esc, fmtSpent, fmtLeft, midnightOf, countsToShow, totalsSince } = YS;
+  const { config, MSG, t, plural, modeLabel, esc, fmtSpent, fmtLeft, midnightOf, countsToShow, totalsSince } = YS;
   const { T, state, send } = YSC;
   const html = document.documentElement;
 
   const DURATION_PRESETS = [5, 10, 15, 30, 60];
+  const MODE_DESCRIPTIONS = { all: 'modeAllDesc', long: 'modeLongDesc', one: 'modeOneDesc' };
+  const needsDuration = (mode) => mode !== 'one';
 
   // --- Montage ----------------------------------------------------------------
-  const builders = { start: buildStart, end: buildEnd, toolong: buildTooLong };
+  const builders = { start: buildStart, end: buildEnd, toolong: buildTooLong, chosen: buildChosen };
 
   // Affiche l'écran demandé (ou aucun si view est null). Ne reconstruit pas un écran déjà affiché.
   function show(view) {
@@ -53,12 +56,17 @@ YSC.overlays = (() => {
   // Validation pure du formulaire : message d'aide et bouton actif ou non.
   function validateForm({ mode, duration, customDuration, intention }) {
     const missing = config.MIN_INTENTION - intention.trim().length;
-    const canSubmit = Boolean(mode && duration && missing <= 0);
-    if (customDuration !== '' && duration === null) {
+    const canSubmit = Boolean(mode && (duration || !needsDuration(mode)) && missing <= 0);
+    if (needsDuration(mode) && customDuration !== '' && duration === null) {
       return { canSubmit, hint: t('startCustomRange', config.MIN_DURATION, config.MAX_DURATION) };
     }
     if (missing > 0) return { canSubmit, hint: plural(missing, 'startHintOne', 'startHintMany') };
     return { canSubmit, hint: '' };
+  }
+
+  function confirmTitle({ mode, duration }) {
+    if (!needsDuration(mode)) return t('confirmTitleOneVideo');
+    return duration === 1 ? t('confirmTitleOne') : t('confirmTitle', duration);
   }
 
   function buildStart(screen) {
@@ -77,8 +85,8 @@ YSC.overlays = (() => {
 
     const modeButton = (mode) => `
       <button type="button" class="mode" data-mode="${mode}" aria-pressed="${mode === form.mode}">
-        <strong>${esc(t(mode === 'all' ? 'modeAll' : 'modeLong'))}</strong>
-        <small>${esc(t(mode === 'all' ? 'modeAllDesc' : 'modeLongDesc'))}</small>
+        <strong>${esc(modeLabel(mode))}</strong>
+        <small>${esc(t(MODE_DESCRIPTIONS[mode]))}</small>
       </button>`;
     const presetChip = (d) => `
       <button type="button" class="chip" data-d="${d}" aria-pressed="${d === form.duration && !form.customDuration}">${esc(t('minutesShort', d))}</button>`;
@@ -94,7 +102,7 @@ YSC.overlays = (() => {
             <div class="label">${esc(t('startModeLabel'))}</div>
             <div class="modes">${config.MODES.map(modeButton).join('')}</div>
           </div>
-          <div class="field">
+          <div class="field" id="duration-field">
             <div class="label">${esc(t('startDurationLabel'))}</div>
             <div class="chips">
               ${DURATION_PRESETS.map(presetChip).join('')}
@@ -121,6 +129,7 @@ YSC.overlays = (() => {
       customChip.classList.toggle('active', !!form.customDuration);
 
       const update = () => {
+        $('#duration-field').hidden = !needsDuration(form.mode);
         const { hint, canSubmit } = validateForm(form);
         $('#hint').textContent = hint;
         $('#go').disabled = !canSubmit;
@@ -166,8 +175,8 @@ YSC.overlays = (() => {
       stopTimer();
       screen.innerHTML = `
         <div class="card center">
-          <div class="eyebrow">${esc(t(form.mode === 'long' ? 'modeLong' : 'modeAll'))}</div>
-          <h1>${esc(form.duration === 1 ? t('confirmTitleOne') : t('confirmTitle', form.duration))}</h1>
+          <div class="eyebrow">${esc(modeLabel(form.mode))}</div>
+          <h1>${esc(confirmTitle(form))}</h1>
           <p class="quote">${esc(t('quote', form.intention.trim()))}</p>
           <div class="ring">
             <svg viewBox="0 0 120 120" aria-hidden="true">
@@ -202,7 +211,7 @@ YSC.overlays = (() => {
       $('#start').addEventListener('click', () => {
         $('#start').disabled = true;
         const { mode, duration, intention } = form;
-        send({ type: MSG.START_SESSION, durationMin: duration, intention, mode });
+        send({ type: MSG.START_SESSION, durationMin: needsDuration(mode) ? duration : null, intention, mode });
       });
     }
 
@@ -293,6 +302,19 @@ YSC.overlays = (() => {
         <h1>${esc(t('tooLongTitle'))}</h1>
         <p class="lead">${esc(detail)}</p>
       </div>`;
+  }
+
+  // --- Vidéo déjà choisie (session « une vidéo ») --------------------------------
+  function buildChosen(screen) {
+    const id = state.session.chosenVideo; // validé par l'arrière-plan (format d'identifiant YouTube)
+    screen.innerHTML = `
+      <div class="card center">
+        <div class="eyebrow">${esc(modeLabel('one'))}</div>
+        <h1>${esc(t('chosenTitle'))}</h1>
+        <p class="lead">${esc(t('chosenLead'))}</p>
+        <button type="button" class="primary" id="back">${esc(t('chosenBack'))}</button>
+      </div>`;
+    screen.querySelector('#back').addEventListener('click', () => location.assign(`/watch?v=${id}`));
   }
 
   return { show };

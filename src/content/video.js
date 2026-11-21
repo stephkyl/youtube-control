@@ -3,11 +3,14 @@
 // Suivi de la vidéo affichée : est-elle lisible dans le temps restant ? quand se termine-t-elle ?
 YSC.video = (() => {
   const { MSG } = YS;
-  const { T, state, resetVideoState, isOvertime, remainingMs, send } = YSC;
+  const { T, state, resetVideoState, isOvertime, isOneVideo, remainingMs, send } = YSC;
   const { pageType, urlVideoId, getMainVideo, isAdShowing, playerVideoId } = YSC;
 
   // Décision pure : la vidéo affichée peut-elle être lue, et comment la compter ?
   function judgeVideo(type, video) {
+    // Session « une vidéo » : pas de limite de temps (directs compris). Le choix de la vidéo
+    // et le blocage des autres sont gérés par l'arrière-plan et l'écran « déjà choisie ».
+    if (isOneVideo()) return { allowed: true, kind: 'video' };
     const rem = remainingMs();
     if (type === 'shorts') {
       // Un short n'est jamais coupé ni refusé. S'il commence à moins de 2 min de la fin
@@ -32,8 +35,11 @@ YSC.video = (() => {
 
   // Après une navigation, <video> peut encore porter la vidéo précédente : on attend que le
   // lecteur annonce la bonne (ou, à défaut de son API, un court délai).
+  // Session « une vidéo » : la vidéo n'est retenue qu'une fois sa lecture lancée (hors publicité),
+  // et sa durée n'importe pas (un direct n'en a pas).
   function isPlayerReady(type, id, video) {
-    if (!Number.isFinite(video.duration) || video.duration <= 0 || isAdShowing(type)) return false;
+    if (isAdShowing(type)) return false;
+    if (isOneVideo() ? video.paused : !(Number.isFinite(video.duration) && video.duration > 0)) return false;
     const playerId = playerVideoId(type);
     return playerId ? playerId === id : Date.now() - state.video.navAt > T.PLAYER_SETTLE_MS;
   }
@@ -84,7 +90,7 @@ YSC.video = (() => {
     (e) => {
       if (!e.isTrusted || !YSC.isRunning() || pageType() !== 'watch') return;
       if (e.target !== getMainVideo('watch') || isAdShowing('watch')) return;
-      send({ type: MSG.VIDEO_ENDED });
+      send({ type: MSG.VIDEO_ENDED, videoId: urlVideoId('watch') });
     },
     true
   );

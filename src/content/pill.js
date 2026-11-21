@@ -4,7 +4,7 @@
 // au clic, confirmation sur place.
 YSC.pill = (() => {
   const { MSG, t, plural, esc, minutesLeft } = YS;
-  const { T, state, isRunning, isOvertime, isOnLastShort, remainingMs, send } = YSC;
+  const { T, state, isRunning, isOvertime, isOneVideo, isOnLastShort, remainingMs, send } = YSC;
 
   let pill = null; // { host, box, txt }
 
@@ -49,6 +49,7 @@ YSC.pill = (() => {
   }
 
   function text() {
+    if (isOneVideo()) return t(state.session.chosenVideo ? 'pillYourVideo' : 'pillChooseVideo');
     if (isOnLastShort()) return t('lastShort');
     if (isOvertime()) return t('lastVideo');
     return plural(minutesLeft(remainingMs()), 'pillLeftOne', 'pillLeftMany');
@@ -63,7 +64,7 @@ YSC.pill = (() => {
     if (!pill?.host.isConnected) pill = create();
     const label = text();
     if (pill.txt.textContent !== label) pill.txt.textContent = label;
-    pill.box.classList.toggle('low', isOvertime() || remainingMs() < T.PILL_LOW_MS);
+    pill.box.classList.toggle('low', !isOneVideo() && (isOvertime() || remainingMs() < T.PILL_LOW_MS));
   }
 
   return { update };

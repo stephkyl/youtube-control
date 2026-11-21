@@ -21,7 +21,7 @@
     "message": "Avant d'entrer, pose ton intention."
   },
   "startLead": {
-    "message": "YouTube reste fermé tant qu'aucune session n'est en cours. Choisis une durée et écris ce que tu viens y faire."
+    "message": "YouTube reste fermé tant qu'aucune session n'est en cours. Choisis un type de session et écris ce que tu viens y faire."
   },
   "startModeLabel": {
     "message": "Type de session"
@@ -37,6 +37,12 @@
   },
   "modeLongDesc": {
     "message": "Les shorts disparaissent de YouTube."
+  },
+  "modeOne": {
+    "message": "Une vidéo"
+  },
+  "modeOneDesc": {
+    "message": "Pas de limite de temps, mais une seule vidéo. La session se termine avec elle."
   },
   "startDurationLabel": {
     "message": "Durée de la session"
@@ -70,6 +76,9 @@
   },
   "confirmTitle": {
     "message": "$1 minutes pour :"
+  },
+  "confirmTitleOneVideo": {
+    "message": "Une vidéo pour :"
   },
   "quote": {
     "message": "« $1 »"
@@ -211,6 +220,21 @@
   },
   "tooLongDetail": {
     "message": "Elle dure encore $1, il te reste $2."
+  },
+  "chosenTitle": {
+    "message": "Tu as déjà choisi ta vidéo."
+  },
+  "chosenLead": {
+    "message": "Cette session ne permet qu'une vidéo. Elle se termine avec elle."
+  },
+  "chosenBack": {
+    "message": "Revenir à ma vidéo"
+  },
+  "pillChooseVideo": {
+    "message": "Choisis ta vidéo"
+  },
+  "pillYourVideo": {
+    "message": "Ta vidéo"
   },
   "pillLeftOne": {
     "message": "1 min restante"

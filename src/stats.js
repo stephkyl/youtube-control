@@ -1,6 +1,6 @@
 'use strict';
 
-const { t, plural, esc, dayKey, midnightOf, DAY_MS, fmtClock, fmtDayLabel, fmtSpent, fmtCounts, totalsSince } = YS;
+const { t, plural, modeLabel, esc, dayKey, midnightOf, DAY_MS, fmtClock, fmtDayLabel, fmtSpent, fmtCounts, totalsSince } = YS;
 
 document.documentElement.lang = YS.uiLang;
 document.title = t('statsPageTitle');
@@ -14,7 +14,7 @@ const sum = (rows, fn) => rows.reduce((acc, h) => acc + fn(h), 0);
 function sessionRowHtml(h) {
   const meta = [fmtClock(h.startedAt), fmtSpent(spent(h)), ...fmtCounts(h.videos, h.shorts)];
   const tags = [];
-  if (h.mode === 'long') tags.push(t('modeLong'));
+  if (h.mode !== 'all') tags.push(modeLabel(h.mode));
   if (h.endReason === 'manual') tags.push(t('histEarly'));
   return `<li class="hist-row">
     <div class="hist-meta">${esc(meta.join(' · '))}${tags.map((x) => ` <span class="hist-tag">${esc(x)}</span>`).join('')}</div>

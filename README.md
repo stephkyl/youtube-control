@@ -2,17 +2,18 @@
 
 Extension Firefox qui transforme YouTube en sessions courtes et intentionnelles.
 
-- **Sans session, YouTube est fermé.** Pour en ouvrir une : choisir le type de session, une durée (proposée ou libre), écrire ce qu'on vient faire (10 caractères minimum), puis attendre 10 secondes de réflexion. Si on quitte l'onglet pendant ce temps, le compte à rebours repart de zéro.
+- **Sans session, YouTube est fermé.** Pour en ouvrir une : choisir le type de session, une durée (proposée ou libre ; sauf session « une vidéo »), écrire ce qu'on vient faire (10 caractères minimum), puis attendre 10 secondes de réflexion. Si on quitte l'onglet pendant ce temps, le compte à rebours repart de zéro.
 - **Types de session** :
   - *Shorts et vidéos* : tout est permis, selon les règles ci-dessous.
   - *Vidéos longues uniquement* : les shorts disparaissent (accueil, recherche, menu, onglets de chaîne). Un short ouvert par lien direct s'ouvre dans le lecteur classique, et il compte comme une vidéo.
+  - *Une vidéo* : pas de durée, mais une seule vidéo (directs compris). On cherche librement ; la première vidéo dont la lecture démarre (hors publicité) devient celle de la session. Les suggestions et la lecture automatique disparaissent, toute autre page YouTube affiche « Tu as déjà choisi ta vidéo » avec un bouton pour y revenir, et la session se termine à la fin de la vidéo. Les shorts sont traités comme en session « vidéos longues ». Si rien n'est lu pendant 30 minutes (choix jamais fait, vidéo en pause, onglet fermé), la session s'arrête, à l'heure de la dernière lecture.
 - **Seules les vidéos qui tiennent dans le temps restant sont affichées** (accueil, recherche, barre latérale, écran de fin). Pour une vidéo déjà entamée, c'est le temps qu'il reste à regarder qui compte.
 - **Une vidéo trop longue ouverte par lien direct** est mise en pause et masquée par un écran « hors session ».
 - **La lecture automatique est désactivée.**
 - **Shorts** : un short n'est jamais coupé. À moins de 2 minutes de la fin, le défilement reste possible : le short suivant est le dernier. Pendant celui-ci, rien n'apparaît en dessous et le défilement est bloqué. Il est lu en entier, même s'il dépasse la session, puis l'écran de fin s'affiche. Si le temps s'écoule avant d'avoir défilé, c'est le short en cours qui devient le dernier.
 - **Fin de session** : un écran de clôture s'affiche avec une animation, l'intention de départ et des statistiques : la durée réelle de la session, le temps total depuis minuit (et le nombre de sessions), et le nombre de vidéos et/ou de shorts lancés. Il n'y a pas de bouton « encore 5 min ». Le lien « Ouvrir une nouvelle session » ramène au formulaire de démarrage complet (intention + temps de réflexion).
 - **Langues** : anglais par défaut, français si Firefox est en français (`_locales/`).
-- Une pastille en bas à gauche indique le temps restant, en minutes. Au survol, un bouton « Terminer » permet d'arrêter la session, après une confirmation dans la pastille. La popup de l'extension permet aussi de terminer la session plus tôt, sans confirmation.
+- Une pastille en bas à gauche indique le temps restant, en minutes (en session « une vidéo » : « Choisis ta vidéo », puis « Ta vidéo »). Au survol, un bouton « Terminer » permet d'arrêter la session, après une confirmation dans la pastille. La popup de l'extension permet aussi de terminer la session plus tôt, sans confirmation.
 - **Historique** : chaque session terminée est enregistrée localement (500 au maximum) avec son intention, sa durée et le nombre de vidéos et de shorts. L'historique, groupé par jour, s'ouvre depuis l'écran de fin ou depuis la popup (« Historique »), et peut y être effacé. Le bilan du jour (écran de fin, popup) est calculé à partir de cet historique.
 
 ## Réglages
@@ -30,7 +31,7 @@ Dans la popup de l'extension, section repliable « Réglages ». Un changement s
 
 Le module reste chargé jusqu'au redémarrage de Firefox.
 
-## Règles de temps
+## Règles de temps (sessions minutées)
 
 - Le temps est compté à l'horloge : une pause dans une vidéo ne l'arrête pas.
 - Quand le temps est écoulé alors qu'une vidéo est en cours, on la laisse se terminer. Elle dispose au maximum de 30 minutes supplémentaires. Si elle est mise en pause pendant ce temps, la session se termine.
