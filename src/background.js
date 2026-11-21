@@ -56,6 +56,9 @@ function addToHistory(prev, s) {
 
 // Les valeurs viennent d'un script injecté dans YouTube : on les revalide ici.
 async function startSession({ durationMin, intention, mode }) {
+  // Une session en cours n'est jamais remplacée (ex. formulaire validé dans deux onglets) :
+  // elle serait perdue pour l'historique.
+  if (session && session.status !== 'ended') throw new Error('Session déjà en cours');
   const d = Math.round(Number(durationMin));
   if (!Number.isFinite(d) || d < config.MIN_DURATION || d > config.MAX_DURATION) throw new Error('Durée invalide');
   const text = String(intention || '').trim().slice(0, config.MAX_INTENTION);
@@ -133,7 +136,8 @@ setInterval(tick, TICK_MS);
 const handlers = {
   [MSG.START_SESSION]: (msg) => startSession(msg),
 
-  [MSG.END_SESSION]: (msg) => endSession(msg.reason || 'manual'),
+  // Seules ces raisons peuvent venir d'un message ; les autres sont décidées ici.
+  [MSG.END_SESSION]: (msg) => endSession(msg.reason === 'shorts' ? 'shorts' : 'manual'),
 
   async [MSG.VIDEO_STARTED](msg) {
     if (!session || session.status === 'ended' || !isValidVideoId(msg.videoId)) return;
@@ -156,6 +160,7 @@ const handlers = {
 };
 
 browser.runtime.onMessage.addListener((msg, sender) => {
-  const handler = handlers[msg?.type];
-  return handler ? ready.then(() => handler(msg, sender)) : undefined;
+  // Object.hasOwn : un type comme 'toString' ne doit pas tomber sur une méthode héritée.
+  if (!Object.hasOwn(handlers, msg?.type)) return undefined;
+  return ready.then(() => handlers[msg.type](msg, sender));
 });
