@@ -1,10 +1,10 @@
 'use strict';
 
-// Écrans plein page : démarrage (intention + durée + réflexion), fin de session, vidéo hors session,
-// autre page alors que la vidéo d'une session « une vidéo » est déjà choisie.
-// Chacun vit dans un Shadow DOM fermé : isolé du CSS de YouTube et illisible par ses scripts.
+// Full-page screens: start (intention + duration + thinking time), end of session, video out of
+// session, other page while the video of a one-video session has already been chosen.
+// Each lives in a closed Shadow DOM: isolated from YouTube's CSS and unreadable by its scripts.
 YSC.overlays = (() => {
-  const { config, MSG, t, plural, modeLabel, esc, fmtSpent, fmtLeft, midnightOf, countsToShow, totalsSince } = YS;
+  const { config, MSG, t, plural, modeLabel, esc, isValidVideoId, fmtSpent, fmtLeft, midnightOf, countsToShow, totalsSince } = YS;
   const { T, state, send } = YSC;
   const html = document.documentElement;
 
@@ -12,10 +12,10 @@ YSC.overlays = (() => {
   const MODE_DESCRIPTIONS = { all: 'modeAllDesc', long: 'modeLongDesc', one: 'modeOneDesc' };
   const needsDuration = (mode) => mode !== 'one';
 
-  // --- Montage ----------------------------------------------------------------
+  // --- Mounting ---------------------------------------------------------------
   const builders = { start: buildStart, end: buildEnd, toolong: buildTooLong, chosen: buildChosen };
 
-  // Affiche l'écran demandé (ou aucun si view est null). Ne reconstruit pas un écran déjà affiché.
+  // Shows the requested screen (or none if view is null). Does not rebuild a screen already shown.
   function show(view) {
     if (!view) return unmount();
     if (state.overlay?.view === view && state.overlay.host.isConnected) return;
@@ -23,7 +23,7 @@ YSC.overlays = (() => {
     const host = document.createElement('div');
     host.setAttribute('data-ysess', 'overlay');
     host.style.cssText = 'all:initial;position:fixed;inset:0;z-index:2147483647;';
-    // Empêche les raccourcis clavier et la molette de YouTube (navigation Shorts, etc.).
+    // Blocks YouTube's keyboard shortcuts and mouse wheel (Shorts navigation, etc.).
     for (const type of ['keydown', 'keyup', 'keypress', 'wheel', 'touchmove']) {
       host.addEventListener(type, (e) => e.stopPropagation());
     }
@@ -45,15 +45,15 @@ YSC.overlays = (() => {
     html.classList.remove('ysess-locked');
   }
 
-  // --- Démarrage --------------------------------------------------------------
+  // --- Start ------------------------------------------------------------------
 
-  // Durée libre : entier dans les bornes, sinon null.
+  // Custom duration: integer within bounds, otherwise null.
   function parseCustomDuration(text) {
     const n = Number(text);
     return text !== '' && Number.isInteger(n) && n >= config.MIN_DURATION && n <= config.MAX_DURATION ? n : null;
   }
 
-  // Validation pure du formulaire : message d'aide et bouton actif ou non.
+  // Pure form validation: hint message and whether the button is enabled.
   function validateForm({ mode, duration, customDuration, intention }) {
     const missing = config.MIN_INTENTION - intention.trim().length;
     const canSubmit = Boolean(mode && (duration || !needsDuration(mode)) && missing <= 0);
@@ -70,7 +70,7 @@ YSC.overlays = (() => {
   }
 
   function buildStart(screen) {
-    const form = { mode: null, duration: null, customDuration: '', intention: '' }; // pas de valeur par défaut
+    const form = { mode: null, duration: null, customDuration: '', intention: '' }; // no default value
     const $ = (sel) => screen.querySelector(sel);
     const $$ = (sel) => [...screen.querySelectorAll(sel)];
     let timer = null;
@@ -155,7 +155,7 @@ YSC.overlays = (() => {
           update();
         });
       }
-      // Durée libre : saisir une valeur désélectionne les durées proposées.
+      // Custom duration: typing a value deselects the preset durations.
       customInput.addEventListener('input', () => {
         form.customDuration = customInput.value.trim();
         form.duration = parseCustomDuration(form.customDuration);
@@ -201,7 +201,7 @@ YSC.overlays = (() => {
         $('#msg').textContent = t('confirmReady');
         $('.ring').classList.add('done');
       }, 1000);
-      // Quitter l'onglet pendant la réflexion remet le compteur à zéro.
+      // Leaving the tab during the thinking time resets the countdown.
       onVisibility = () => {
         if (document.hidden) renderConfirm();
       };
@@ -219,10 +219,10 @@ YSC.overlays = (() => {
     return stopTimer;
   }
 
-  // --- Fin de session ---------------------------------------------------------
+  // --- End of session ---------------------------------------------------------
 
-  // Statistiques : durée réelle, bilan du jour (d'après l'historique, qui contient déjà
-  // la session qui vient de finir), vidéos et/ou shorts.
+  // Stats: actual duration, today's total (from the history, which already contains
+  // the session that just ended), videos and/or shorts.
   function endTiles(s, history) {
     const nVideos = s.videos.length;
     const nShorts = s.shorts.length;
@@ -277,20 +277,20 @@ YSC.overlays = (() => {
 
     const $ = (sel) => screen.querySelector(sel);
     $('#close').addEventListener('click', () => send({ type: MSG.CLOSE_TAB }));
-    // Mène au formulaire de démarrage (intention + temps de réflexion), pas directement à YouTube.
+    // Leads to the start form (intention + thinking time), not straight to YouTube.
     $('#again').addEventListener('click', () => {
       state.dismissedEndFor = s.id;
       YSC.refresh();
     });
     $('#all-history').addEventListener('click', () => send({ type: MSG.OPEN_STATS }));
 
-    // Les tuiles apparaissent après 1,45 s (animation) : la lecture du stockage a le temps de finir.
+    // Tiles appear after 1.45 s (animation): reading storage has time to finish.
     browser.storage.local.get('history').then(({ history }) => {
       $('#tiles').innerHTML = endTiles(s, history ?? []);
     });
   }
 
-  // --- Vidéo hors session -----------------------------------------------------
+  // --- Video out of session ---------------------------------------------------
   function buildTooLong(screen) {
     const { tooLong } = state.video;
     const detail = YSC.isOvertime()
@@ -304,9 +304,11 @@ YSC.overlays = (() => {
       </div>`;
   }
 
-  // --- Vidéo déjà choisie (session « une vidéo ») --------------------------------
+  // --- Video already chosen (one-video session) ---------------------------------
   function buildChosen(screen) {
-    const id = state.session.chosenVideo; // validé par l'arrière-plan (format d'identifiant YouTube)
+    // Value read from storage: checked again before building the URL.
+    const id = state.session.chosenVideo;
+    const url = isValidVideoId(id) ? `/watch?v=${id}` : '/';
     screen.innerHTML = `
       <div class="card center">
         <div class="eyebrow">${esc(modeLabel('one'))}</div>
@@ -314,7 +316,7 @@ YSC.overlays = (() => {
         <p class="lead">${esc(t('chosenLead'))}</p>
         <button type="button" class="primary" id="back">${esc(t('chosenBack'))}</button>
       </div>`;
-    screen.querySelector('#back').addEventListener('click', () => location.assign(`/watch?v=${id}`));
+    screen.querySelector('#back').addEventListener('click', () => location.assign(url));
   }
 
   return { show };

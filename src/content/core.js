@@ -1,54 +1,54 @@
 'use strict';
 
-// Socle des scripts injectés dans YouTube : délais et seuils, état partagé, accès au lecteur.
-// Les autres fichiers de src/content/ ajoutent leur partie à YSC (YSC.filter, YSC.shorts…),
-// et main.js orchestre le tout. Ordre de chargement : voir manifest.json.
+// Base of the scripts injected into YouTube: delays and thresholds, shared state, player access.
+// The other files in src/content/ add their part to YSC (YSC.filter, YSC.shorts…),
+// and main.js orchestrates everything. Load order: see manifest.json.
 // eslint-disable-next-line no-var
 var YSC = (() => {
-  // Évite d'apercevoir YouTube avant de savoir si une session est en cours (content.css).
+  // Avoids showing YouTube before we know whether a session is running (content.css).
   document.documentElement.classList.add('ysess-pending');
 
-  // Délais et seuils (ms, sauf mention contraire).
+  // Delays and thresholds (ms unless stated otherwise).
   const T = {
-    COUNTDOWN_S: 10, // réflexion avant de pouvoir démarrer (s)
-    FIT_TOLERANCE_MS: 5000, // marge pour l'arrondi des durées affichées
-    END_SCREEN_TTL_MS: 60 * 1000, // l'écran de fin reste affiché 1 min, puis formulaire
-    LAST_SHORT_THRESHOLD_MS: 2 * 60 * 1000, // short commencé à moins de 2 min de la fin → le dernier
-    PLAYER_SETTLE_MS: 1200, // sans API du lecteur : délai avant de se fier à <video> après navigation
-    SHORT_END_MARGIN_S: 0.35, // arrêt du dernier short juste avant sa fin (s)
-    LOOP_RESTART_S: 0.5, // recul de lecture qui signale qu'un short a bouclé (s)
-    SNAP_SETTLE_MS: 1200, // laisse le fil des Shorts se caler avant de verrouiller sa position
-    STACK_TOLERANCE_PX: 2, // tolérance pour reconnaître deux shorts empilés
-    PILL_LOW_MS: 5 * 60 * 1000, // pastille en couleur d'alerte en dessous
-    PILL_CONFIRM_MS: 8000, // la confirmation de la pastille se replie toute seule
-    BADGE_MAX_CHARS: 24, // au-delà, le texte d'un badge n'est pas une durée
-    REFRESH_MS: 500, // rafraîchissement périodique
-    URL_POLL_MS: 100, // détection rapide des changements d'URL (passage d'un short à l'autre)
-    FILTER_EVERY_MS: 2000, // refiltrage périodique : les durées restantes baissent
+    COUNTDOWN_S: 10, // thinking time before starting is allowed (s)
+    FIT_TOLERANCE_MS: 5000, // margin for rounding of displayed durations
+    END_SCREEN_TTL_MS: 60 * 1000, // the end screen stays 1 min, then the start form
+    LAST_SHORT_THRESHOLD_MS: 2 * 60 * 1000, // short started less than 2 min before the end → the last one
+    PLAYER_SETTLE_MS: 1200, // without the player API: delay before trusting <video> after navigation
+    SHORT_END_MARGIN_S: 0.35, // stop the last short just before its end (s)
+    LOOP_RESTART_S: 0.5, // playback jump back that signals a short has looped (s)
+    SNAP_SETTLE_MS: 1200, // let the Shorts feed snap into place before locking its position
+    STACK_TOLERANCE_PX: 2, // tolerance for recognizing two stacked shorts
+    PILL_LOW_MS: 5 * 60 * 1000, // pill in warning color below this
+    PILL_CONFIRM_MS: 8000, // the pill's confirmation closes by itself
+    BADGE_MAX_CHARS: 24, // beyond this, a badge's text is not a duration
+    REFRESH_MS: 500, // periodic refresh
+    URL_POLL_MS: 100, // fast detection of URL changes (moving from one short to the next)
+    FILTER_EVERY_MS: 2000, // periodic refiltering: remaining time keeps decreasing
     MUTATION_DEBOUNCE_MS: 200,
   };
 
   const newVideoState = (id, { lastShort = false } = {}) => ({
-    id, // identifiant de la vidéo affichée (d'après l'URL), ou null
-    navAt: Date.now(), // arrivée sur cette vidéo
-    checked: false, // durée lue et vidéo évaluée
-    lastTime: 0, // dernière position de lecture observée (détection de boucle)
-    lastShort, // ce short est le dernier de la session
-    finished: false, // dernier short terminé : plus rien ne doit jouer
-    tooLong: null, // { videoMs, remainingMs } si la vidéo ne tient pas dans la session
+    id, // ID of the displayed video (from the URL), or null
+    navAt: Date.now(), // arrival on this video
+    checked: false, // duration read and video judged
+    lastTime: 0, // last observed playback position (loop detection)
+    lastShort, // this short is the session's last one
+    finished: false, // last short finished: nothing must play anymore
+    tooLong: null, // { videoMs, remainingMs } if the video doesn't fit in the session
   });
 
   const state = {
     session: null,
     settings: YS.withDefaultSettings(),
     loaded: false,
-    dismissedEndFor: null, // id de session dont l'écran de fin a été quitté dans cet onglet
-    redirecting: false, // redirection short → lecteur classique en cours
-    overlay: null, // écran plein page affiché : { host, view, cleanup }
+    dismissedEndFor: null, // ID of the session whose end screen was dismissed in this tab
+    redirecting: false, // short → classic player redirect in progress
+    overlay: null, // full-page screen shown: { host, view, cleanup }
     video: newVideoState(null),
   };
 
-  // Nouvelle vidéo ou nouvelle session : tout l'état lié à la vidéo repart de zéro, ici et nulle part ailleurs.
+  // New video or new session: all video-related state starts over, here and nowhere else.
   function resetVideoState(id, options) {
     state.video = newVideoState(id, options);
   }
@@ -56,20 +56,20 @@ var YSC = (() => {
   // --- Session ----------------------------------------------------------------
   const isRunning = () => state.session?.status === 'active' || state.session?.status === 'overtime';
   const isOvertime = () => state.session?.status === 'overtime';
-  const isOneVideo = () => isRunning() && state.session.mode === 'one'; // une seule vidéo, sans limite de temps
-  const hidesShorts = () => isRunning() && state.session.mode !== 'all'; // 'long' et 'one'
-  // Temps restant ; 0 hors session et en mode 'one' (pas d'heure de fin).
+  const isOneVideo = () => isRunning() && state.session.mode === 'one'; // a single video, no time limit
+  const hidesShorts = () => isRunning() && state.session.mode !== 'all'; // 'long' and 'one'
+  // Time left; 0 outside a session and in mode 'one' (no end time).
   const remainingMs = () =>
     state.session?.status === 'active' && state.session.endsAt ? Math.max(0, state.session.endsAt - Date.now()) : 0;
 
-  // Mode 'one', vidéo déjà choisie, et la page affichée n'est pas cette vidéo.
+  // Mode 'one', video already chosen, and the displayed page is not that video.
   function isAwayFromChosenVideo() {
     const chosen = isOneVideo() && state.session.chosenVideo;
     return Boolean(chosen) && !(pageType() === 'watch' && urlVideoId('watch') === chosen);
   }
   const send = (msg) => browser.runtime.sendMessage(msg).catch(() => undefined);
 
-  // --- Page et lecteur --------------------------------------------------------
+  // --- Page and player --------------------------------------------------------
   function pageType() {
     const path = location.pathname;
     if (path === '/watch') return 'watch';
@@ -101,12 +101,12 @@ var YSC = (() => {
 
   const isAdShowing = (type) => !!getPlayer(type)?.classList.contains('ad-showing');
 
-  // L'API du lecteur YouTube vit dans la page ; Firefox y donne accès via wrappedJSObject.
-  // Permet de s'assurer que <video> contient bien la nouvelle vidéo après une navigation.
+  // The YouTube player API lives in the page; Firefox gives access to it via wrappedJSObject.
+  // Used to make sure <video> really holds the new video after a navigation.
   function playerVideoId(type) {
     try {
       const id = getPlayer(type)?.wrappedJSObject?.getVideoData?.()?.video_id;
-      return YS.isValidVideoId(id) ? id : null; // valeur fournie par la page : non fiable
+      return YS.isValidVideoId(id) ? id : null; // value provided by the page: untrusted
     } catch (_) {
       return null;
     }

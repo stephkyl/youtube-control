@@ -1,6 +1,6 @@
-/* Palette commune à tous les écrans de l'extension. Préfixe --ys- : pas de collision avec YouTube.
-   Le manifeste l'injecte aussi dans YouTube : les variables CSS traversent le Shadow DOM
-   par héritage (et `all: initial` ne les réinitialise pas). */
+/* Palette shared by all of the extension's screens. Prefix --ys-: no collision with YouTube.
+   The manifest also injects it into YouTube: CSS variables cross the Shadow DOM
+   through inheritance (and `all: initial` does not reset them). */
 :root {
   --ys-bg: #10121a;
   --ys-glow-1: #26345e;

@@ -1,4 +1,4 @@
-/* Couleurs : src/theme.css */
+/* Colors: src/theme.css */
 * { box-sizing: border-box; }
 body {
   margin: 0;
@@ -31,7 +31,7 @@ button.link {
   text-decoration: underline; text-underline-offset: 3px; margin-top: 8px; padding: 6px;
 }
 
-/* Réglages : section repliable sous le contenu principal. */
+/* Settings: collapsible section below the main content. */
 .settings { margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,.08); }
 .settings summary { cursor: pointer; color: var(--ys-muted); font-size: 13px; text-align: center; }
 .settings fieldset { border: 0; padding: 0; margin: 10px 0 0; }

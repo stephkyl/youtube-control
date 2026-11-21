@@ -1,23 +1,23 @@
 'use strict';
 
-// Suivi de la vidéo affichée : est-elle lisible dans le temps restant ? quand se termine-t-elle ?
+// Tracks the displayed video: can it be watched in the remaining time? when does it end?
 YSC.video = (() => {
   const { MSG } = YS;
   const { T, state, resetVideoState, isOvertime, isOneVideo, remainingMs, send } = YSC;
   const { pageType, urlVideoId, getMainVideo, isAdShowing, playerVideoId } = YSC;
 
-  // Décision pure : la vidéo affichée peut-elle être lue, et comment la compter ?
+  // Pure decision: can the displayed video be watched, and how is it counted?
   function judgeVideo(type, video) {
-    // Session « une vidéo » : pas de limite de temps (directs compris). Le choix de la vidéo
-    // et le blocage des autres sont gérés par l'arrière-plan et l'écran « déjà choisie ».
+    // One-video session: no time limit (live streams included). Choosing the video and
+    // blocking the others is handled by the background and the "already chosen" screen.
     if (isOneVideo()) return { allowed: true, kind: 'video' };
     const rem = remainingMs();
     if (type === 'shorts') {
-      // Un short n'est jamais coupé ni refusé. S'il commence à moins de 2 min de la fin
-      // (ou après), c'est le dernier : lu en entier, même au-delà de la session.
+      // A short is never cut off or refused. If it starts less than 2 min before the end
+      // (or later), it is the last one: played in full, even past the session.
       return { allowed: true, kind: 'short', lastShort: isOvertime() || rem < T.LAST_SHORT_THRESHOLD_MS };
     }
-    // Un short ouvert dans le lecteur classique (session « vidéos longues ») compte comme vidéo.
+    // A short opened in the classic player (long-videos session) counts as a video.
     const videoMs = Math.max(0, ((video.duration - video.currentTime) * 1000) / (video.playbackRate || 1));
     const allowed = !isOvertime() && videoMs <= rem + T.FIT_TOLERANCE_MS;
     return { allowed, kind: 'video', videoMs, remainingMs: rem };
@@ -33,13 +33,15 @@ YSC.video = (() => {
     }
   }
 
-  // Après une navigation, <video> peut encore porter la vidéo précédente : on attend que le
-  // lecteur annonce la bonne (ou, à défaut de son API, un court délai).
-  // Session « une vidéo » : la vidéo n'est retenue qu'une fois sa lecture lancée (hors publicité),
-  // et sa durée n'importe pas (un direct n'en a pas).
+  // After a navigation, <video> may still hold the previous video: wait until the player
+  // reports the right one (or, without its API, a short delay).
+  // One-video session: the video is only taken once playback has started (ads excluded),
+  // and its duration doesn't matter (a live stream has none).
   function isPlayerReady(type, id, video) {
     if (isAdShowing(type)) return false;
-    if (isOneVideo() ? video.paused : !(Number.isFinite(video.duration) && video.duration > 0)) return false;
+    const hasDuration = Number.isFinite(video.duration) && video.duration > 0;
+    // One video: wait for playback to start; otherwise: wait for the duration to be known.
+    if (isOneVideo() ? video.paused : !hasDuration) return false;
     const playerId = playerVideoId(type);
     return playerId ? playerId === id : Date.now() - state.video.navAt > T.PLAYER_SETTLE_MS;
   }
@@ -49,8 +51,8 @@ YSC.video = (() => {
     const id = urlVideoId(type);
 
     if (id !== state.video.id) {
-      // Évalué avant la réinitialisation : on quitte un short alors que le suivant est attendu
-      // comme le dernier ('armed') → celui où l'on arrive l'est, sans attendre son chargement.
+      // Evaluated before the reset: leaving a short while the next one is expected to be
+      // the last ('armed') → the one we land on is, without waiting for it to load.
       const wasArmed = type === 'shorts' && !!state.video.id && YSC.shorts.maskState() === 'armed';
       resetVideoState(id, { lastShort: wasArmed });
     }
@@ -64,9 +66,9 @@ YSC.video = (() => {
     }
 
     if (type === 'shorts' && vs.checked && !vs.finished) {
-      // Temps écoulé alors qu'on n'a pas encore défilé : le short en cours devient le dernier.
+      // Time is up before scrolling: the current short becomes the last one.
       if (isOvertime()) vs.lastShort = true;
-      // Filet de sécurité si 'timeupdate' a raté la fin : la boucle a redémarré.
+      // Safety net if 'timeupdate' missed the end: the loop has restarted.
       if (vs.lastShort && video.currentTime + T.LOOP_RESTART_S < vs.lastTime) YSC.shorts.finish(video);
     }
     if (vs.finished && !video.paused) video.pause();
@@ -84,7 +86,7 @@ YSC.video = (() => {
     return !!video && !video.paused && !video.ended;
   }
 
-  // Les événements média ne remontent pas, mais la phase de capture les voit.
+  // Media events don't bubble, but the capture phase sees them.
   document.addEventListener(
     'ended',
     (e) => {

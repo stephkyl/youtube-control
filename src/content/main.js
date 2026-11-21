@@ -1,13 +1,13 @@
 'use strict';
 
-// Point d'entrée des scripts injectés dans YouTube : charge l'état, suit ses changements
-// et rafraîchit la page. Tout passe par refresh().
+// Entry point of the scripts injected into YouTube: loads the state, follows its changes
+// and refreshes the page. Everything goes through refresh().
 (() => {
   const { MSG } = YS;
   const { T, state, resetVideoState, isRunning, isOneVideo, hidesShorts, isAwayFromChosenVideo, pauseAllVideos } = YSC;
   const html = document.documentElement;
 
-  // Écran plein page à afficher, ou null.
+  // Full-page screen to show, or null.
   function desiredView() {
     const { session } = state;
     if (!session) return 'start';
@@ -20,18 +20,18 @@
     return null;
   }
 
-  // Classes posées sur <html> : elles pilotent les règles de content.css.
+  // Classes set on <html>: they drive the rules in content.css.
   function applyPageClasses() {
     const running = isRunning();
-    // Mode 'one' : aucune suggestion autour de la vidéo, quel que soit le réglage.
+    // Mode 'one': no suggestions around the video, whatever the setting.
     const hideRelated = isOneVideo() || state.settings.watchSuggestions === 'hide';
     html.classList.toggle('ysess-hide-related', running && hideRelated);
     html.classList.toggle('ysess-freeze-related', running && !hideRelated);
     html.classList.toggle('ysess-no-shorts', hidesShorts());
   }
 
-  // 1. Mettre l'état à jour (vidéo affichée, verdict), 2. l'appliquer à la page.
-  // `filters` force le refiltrage des suggestions (sinon : périodique, voir filter.js).
+  // 1. Update the state (displayed video, verdict), 2. apply it to the page.
+  // `filters` forces suggestions to be filtered again (otherwise periodic, see filter.js).
   function refresh({ filters = false } = {}) {
     if (!state.loaded || YSC.filter.redirectShortsToWatch()) return;
 
@@ -49,13 +49,13 @@
   }
   YSC.refresh = refresh;
 
-  // --- État ---------------------------------------------------------------------
+  // --- State --------------------------------------------------------------------
   browser.storage.local.get(['session', 'settings']).then((r) => {
     state.session = r.session ?? null;
     state.settings = YS.withDefaultSettings(r.settings);
     state.loaded = true;
     refresh({ filters: true });
-    // Pendant une redirection short → lecteur classique, la page reste masquée.
+    // During a short → classic player redirect, the page stays hidden.
     if (!state.redirecting) html.classList.remove('ysess-pending');
   });
 
@@ -65,7 +65,7 @@
     if (changes.session) {
       const previousId = state.session?.id;
       state.session = changes.session.newValue ?? null;
-      // Nouvelle session : la vidéo affichée est réévaluée depuis zéro.
+      // New session: the displayed video is judged again from scratch.
       if (state.session?.id !== previousId) resetVideoState(state.video.id);
     }
     refresh({ filters: true });
@@ -75,10 +75,10 @@
     msg?.type === MSG.IS_PLAYING ? Promise.resolve(YSC.video.isMainVideoPlaying()) : undefined
   );
 
-  // --- Rafraîchissement ---------------------------------------------------------
+  // --- Refresh ------------------------------------------------------------------
   setInterval(() => refresh(), T.REFRESH_MS);
 
-  // Changement d'URL (passage d'un short à l'autre) : réaction en 100 ms au lieu de 500.
+  // URL change (moving from one short to the next): react in 100 ms instead of 500.
   let lastHref = location.href;
   setInterval(() => {
     if (location.href === lastHref) return;

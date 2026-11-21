@@ -1,31 +1,31 @@
 'use strict';
 
-// Source de vérité de la session. Seul ce script écrit la session et l'historique dans
-// storage.local (les réglages sont écrits par la popup ; la page Historique peut
-// effacer l'historique).
+// Source of truth for the session. Only this script writes the session and the history
+// to storage.local (settings are written by the popup; the history page may clear the
+// history).
 //
 // session = {
 //   id, intention, durationMin,
-//   mode: 'all' | 'long' | 'one', // voir YS.config.MODES
-//   startedAt, endsAt,          // timestamps (ms), temps "horloge" ; mode 'one' : durationMin et endsAt = null
+//   mode: 'all' | 'long' | 'one', // see YS.config.MODES
+//   startedAt, endsAt,          // timestamps (ms), wall-clock time; mode 'one': durationMin and endsAt = null
 //   status: 'active' | 'overtime' | 'ended',
-//   videos: [videoId],          // vidéos lancées pendant la session
-//   shorts: [videoId],          // shorts lancés pendant la session
-//   chosenVideo, lastActiveAt,  // mode 'one' : la vidéo de la session, dernière lecture constatée
+//   videos: [videoId],          // videos started during the session
+//   shorts: [videoId],          // shorts started during the session
+//   chosenVideo, lastActiveAt,  // mode 'one': the session's video, last time playback was seen
 //   endedAt, endReason,         // 'time' | 'last-video' | 'shorts' | 'manual' | 'overtime-cap'
 //                               // | 'video-ended' | 'inactive'
 // }
 //
-// history = [entrée, …]  // sessions terminées, la plus récente en premier (voir shared.js)
+// history = [entry, …]  // finished sessions, most recent first (see shared.js)
 
 const { config, MSG, isValidVideoId } = YS;
 
-const LAST_VIDEO_THRESHOLD_MS = 3 * 60 * 1000; // vidéo terminée avec < 3 min restantes → fin
-const OVERTIME_CAP_MS = 30 * 60 * 1000; // garde-fou si une vidéo s'éternise après l'heure
-const MAX_IDS_PER_LIST = 500; // vidéos (ou shorts) mémorisées par session
-const MAX_HISTORY = 500; // sessions conservées dans l'historique
-const INACTIVITY_MS = 30 * 60 * 1000; // mode 'one' : rien n'a joué depuis 30 min → fin
-const ACTIVITY_SAVE_MS = 60 * 1000; // mode 'one' : lastActiveAt enregistré au plus une fois par minute
+const LAST_VIDEO_THRESHOLD_MS = 3 * 60 * 1000; // video ends with < 3 min left → session ends
+const OVERTIME_CAP_MS = 30 * 60 * 1000; // safety net if a video drags on past the end time
+const MAX_IDS_PER_LIST = 500; // videos (or shorts) remembered per session
+const MAX_HISTORY = 500; // sessions kept in the history
+const INACTIVITY_MS = 30 * 60 * 1000; // mode 'one': nothing has played for 30 min → session ends
+const ACTIVITY_SAVE_MS = 60 * 1000; // mode 'one': lastActiveAt saved at most once a minute
 const TICK_MS = 1000;
 
 let session = null;
@@ -36,7 +36,7 @@ const ready = browser.storage.local.get('session').then((r) => {
 const save = () => browser.storage.local.set({ session });
 
 // ---------------------------------------------------------------------------
-// Historique
+// History
 // ---------------------------------------------------------------------------
 
 function addToHistory(prev, s) {
@@ -55,29 +55,34 @@ function addToHistory(prev, s) {
 }
 
 // ---------------------------------------------------------------------------
-// Cycle de vie de la session
+// Session lifecycle
 // ---------------------------------------------------------------------------
 
-// Les valeurs viennent d'un script injecté dans YouTube : on les revalide ici.
-async function startSession({ durationMin, intention, mode }) {
-  // Une session en cours n'est jamais remplacée (ex. formulaire validé dans deux onglets) :
-  // elle serait perdue pour l'historique.
-  if (session && session.status !== 'ended') throw new Error('Session déjà en cours');
-  if (!config.MODES.includes(mode)) throw new Error('Type de session invalide');
-  const timed = mode !== 'one';
-  const d = Math.round(Number(durationMin));
-  if (timed && (!Number.isFinite(d) || d < config.MIN_DURATION || d > config.MAX_DURATION)) throw new Error('Durée invalide');
+function validDuration(value) {
+  const d = Math.round(Number(value));
+  if (!Number.isFinite(d) || d < config.MIN_DURATION || d > config.MAX_DURATION) throw new Error('Invalid duration');
+  return d;
+}
+
+// Values come from a script injected into YouTube: validate them again here.
+async function startSession(msg) {
+  // A running session is never replaced (e.g. form submitted in two tabs):
+  // it would be lost from the history.
+  if (session && session.status !== 'ended') throw new Error('A session is already running');
+  const { mode, intention } = msg;
+  if (!config.MODES.includes(mode)) throw new Error('Invalid session type');
+  const durationMin = mode === 'one' ? null : validDuration(msg.durationMin);
   const text = String(intention || '').trim().slice(0, config.MAX_INTENTION);
-  if (text.length < config.MIN_INTENTION) throw new Error('Intention trop courte');
+  if (text.length < config.MIN_INTENTION) throw new Error('Intention too short');
 
   const now = Date.now();
   session = {
     id: `${now}-${Math.random().toString(36).slice(2, 8)}`,
     intention: text,
-    durationMin: timed ? d : null,
+    durationMin,
     mode,
     startedAt: now,
-    endsAt: timed ? now + d * 60 * 1000 : null,
+    endsAt: durationMin === null ? null : now + durationMin * 60 * 1000,
     status: 'active',
     videos: [],
     shorts: [],
@@ -94,22 +99,22 @@ async function endSession(reason, endedAt = Date.now()) {
   if (!session || session.status === 'ended') return session;
   session = { ...session, status: 'ended', endedAt, endReason: reason };
   const stored = await browser.storage.local.get('history');
-  // Session et historique écrits ensemble : l'écran de fin reçoit les deux en même temps.
+  // Session and history written together: the end screen receives both at once.
   await browser.storage.local.set({ session, history: addToHistory(stored.history, session) });
   return session;
 }
 
 async function anyTabPlaying() {
-  // Pas besoin de la permission "tabs" : les permissions d'hôte suffisent pour filtrer par URL.
-  const tabs = await browser.tabs.query({ url: [...config.YOUTUBE_URLS] });
+  // No "tabs" permission needed: host permissions are enough to filter by URL.
+  const tabs = await browser.tabs.query({ url: config.YOUTUBE_URLS });
   const answers = await Promise.all(
     tabs.map((tab) => browser.tabs.sendMessage(tab.id, { type: MSG.IS_PLAYING }).catch(() => false))
   );
   return answers.some(Boolean);
 }
 
-// Session « une vidéo » : pas d'heure de fin, mais elle s'arrête après 30 min sans lecture
-// (vidéo pas encore choisie, en pause, onglet fermé…), à l'heure de la dernière lecture.
+// One-video session: no end time, but it stops after 30 min without playback
+// (video not chosen yet, paused, tab closed…), at the time of the last playback.
 async function tickOneVideo(now) {
   if (await anyTabPlaying()) {
     if (now - session.lastActiveAt < ACTIVITY_SAVE_MS) return;
@@ -120,8 +125,8 @@ async function tickOneVideo(now) {
   }
 }
 
-// Quand le temps est écoulé, on laisse la vidéo en cours se terminer ("overtime"),
-// puis on clôt la session dès que plus rien ne joue.
+// When time is up, the current video may finish ("overtime"),
+// then the session closes as soon as nothing is playing.
 let ticking = false;
 async function tick() {
   if (ticking) return;
@@ -130,7 +135,10 @@ async function tick() {
     await ready;
     if (!session || session.status === 'ended') return;
     const now = Date.now();
-    if (session.mode === 'one') return await tickOneVideo(now);
+    if (session.mode === 'one') {
+      await tickOneVideo(now);
+      return;
+    }
     if (now < session.endsAt) return;
     if (now > session.endsAt + OVERTIME_CAP_MS) {
       await endSession('overtime-cap', session.endsAt + OVERTIME_CAP_MS);
@@ -140,8 +148,8 @@ async function tick() {
         await save();
       }
     } else {
-      // Rien ne jouait à l'heure prévue : la session s'est terminée à cette heure-là,
-      // même si on ne s'en aperçoit que plus tard (navigateur fermé, mise en veille…).
+      // Nothing was playing at the planned time: the session ended at that time,
+      // even if we only notice later (browser closed, computer asleep…).
       await endSession('time', session.status === 'active' ? session.endsAt : now);
     }
   } finally {
@@ -156,13 +164,13 @@ setInterval(tick, TICK_MS);
 const handlers = {
   [MSG.START_SESSION]: (msg) => startSession(msg),
 
-  // Seules ces raisons peuvent venir d'un message ; les autres sont décidées ici.
+  // Only these reasons may come from a message; the others are decided here.
   [MSG.END_SESSION]: (msg) => endSession(msg.reason === 'shorts' ? 'shorts' : 'manual'),
 
   async [MSG.VIDEO_STARTED](msg) {
     if (!session || session.status === 'ended' || !isValidVideoId(msg.videoId)) return;
     if (session.mode === 'one') {
-      // La première vidéo lancée devient celle de la session ; les autres sont ignorées.
+      // The first video started becomes the session's video; others are ignored.
       if (session.chosenVideo && session.chosenVideo !== msg.videoId) return;
       session = { ...session, chosenVideo: msg.videoId, lastActiveAt: Date.now() };
     }
@@ -184,12 +192,12 @@ const handlers = {
 
   [MSG.CLOSE_TAB]: (_msg, sender) => (sender.tab ? browser.tabs.remove(sender.tab.id) : undefined),
 
-  // Une page web ne peut pas ouvrir une page de l'extension : le script injecté passe par ici.
+  // A web page cannot open an extension page: the injected script goes through here.
   [MSG.OPEN_STATS]: () => browser.tabs.create({ url: browser.runtime.getURL(config.STATS_PAGE) }).then(() => undefined),
 };
 
 browser.runtime.onMessage.addListener((msg, sender) => {
-  // Object.hasOwn : un type comme 'toString' ne doit pas tomber sur une méthode héritée.
+  // Object.hasOwn: a type such as 'toString' must not hit an inherited method.
   if (!Object.hasOwn(handlers, msg?.type)) return undefined;
   return ready.then(() => handlers[msg.type](msg, sender));
 });

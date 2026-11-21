@@ -1,7 +1,7 @@
 'use strict';
 
-// Filtrage des suggestions selon le temps restant, et masquage des Shorts en session
-// « vidéos longues » ou « une vidéo ». Les règles d'affichage correspondantes sont dans content.css.
+// Filters suggestions by remaining time, and hides Shorts in 'long' and 'one' sessions.
+// The matching display rules are in content.css.
 YSC.filter = (() => {
   const { T, state, isRunning, isOneVideo, hidesShorts, remainingMs, pageType, urlVideoId } = YSC;
   const html = document.documentElement;
@@ -33,14 +33,14 @@ YSC.filter = (() => {
     '[class*="resume-playback"] [style*="width"]',
   ].join(',');
 
-  // Filtres de recherche et onglets de chaîne « Shorts » : pas de lien, repérés par leur texte.
+  // Search filters and channel tabs named "Shorts": no link, detected by their text.
   const SHORTS_LABEL_SEL = 'yt-chip-cloud-chip-renderer, chip-view-model, yt-chip-cloud-chip-view-model, yt-tab-shape, tp-yt-paper-tab';
 
   const TIME_RE = /(?:^|\s)((?:\d{1,2}:)?\d{1,2}:\d{2})(?:\s|$)/;
 
   const parseTime = (text) => text.split(':').map(Number).reduce((acc, n) => acc * 60 + n, 0) * 1000;
 
-  // Durée affichée sur la vignette, ou null si inconnue (direct, short, playlist, pas encore chargée).
+  // Duration shown on the thumbnail, or null if unknown (live, short, playlist, not loaded yet).
   function readCardDuration(card) {
     for (const badge of card.querySelectorAll(BADGE_SEL)) {
       const text = (badge.textContent || '').trim();
@@ -60,10 +60,10 @@ YSC.filter = (() => {
   function filterCards() {
     const rem = remainingMs();
     for (const card of document.querySelectorAll(CARD_SEL)) {
-      // Ne traiter que la carte la plus externe (ex. ytd-rich-item-renderer > yt-lockup-view-model).
+      // Only handle the outermost card (e.g. ytd-rich-item-renderer > yt-lockup-view-model).
       if (card.parentElement?.closest(CARD_SEL)) continue;
       const duration = readCardDuration(card);
-      const left = duration === null ? null : duration * (1 - readWatchedFraction(card)); // si déjà entamée
+      const left = duration === null ? null : duration * (1 - readWatchedFraction(card)); // if already partly watched
       const hide = left !== null && left > rem + T.FIT_TOLERANCE_MS;
       if (hide !== card.hasAttribute('data-ysess-hidden')) card.toggleAttribute('data-ysess-hidden', hide);
     }
@@ -83,8 +83,8 @@ YSC.filter = (() => {
     }
   }
 
-  // Short ouvert par lien direct en session « vidéos longues » ou « une vidéo » : lecteur classique.
-  // Renvoie true si une redirection est en cours (rien d'autre à faire sur cette page).
+  // Short opened from a direct link in a 'long' or 'one' session: classic player.
+  // Returns true if a redirect is in progress (nothing else to do on this page).
   function redirectShortsToWatch() {
     if (state.redirecting) return true;
     if (!hidesShorts() || pageType() !== 'shorts') return false;
@@ -97,7 +97,7 @@ YSC.filter = (() => {
   let lastRunAt = 0;
   function run() {
     lastRunAt = Date.now();
-    // Mode 'one' : pas de limite de temps, donc rien à filtrer par durée.
+    // Mode 'one': no time limit, so nothing to filter by duration.
     if (isRunning() && !isOneVideo()) filterCards();
     else clearFilter();
     markShortsLabels();
@@ -106,7 +106,7 @@ YSC.filter = (() => {
     if (Date.now() - lastRunAt >= T.FILTER_EVERY_MS) run();
   };
 
-  // YouTube ajoute des vignettes en continu : on refiltre peu après chaque vague de changements.
+  // YouTube keeps adding thumbnails: filter again shortly after each burst of changes.
   let debounce = null;
   new MutationObserver(() => {
     if (debounce || !isRunning()) return;

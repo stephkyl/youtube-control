@@ -10,7 +10,7 @@ const $ = (id) => document.getElementById(id);
 const spent = (h) => Math.max(0, h.endedAt - h.startedAt);
 const sum = (rows, fn) => rows.reduce((acc, h) => acc + fn(h), 0);
 
-// Une session : heure de début, durée, vidéos/shorts, étiquettes, puis l'intention.
+// One session: start time, duration, videos/shorts, tags, then the intention.
 function sessionRowHtml(h) {
   const meta = [fmtClock(h.startedAt), fmtSpent(spent(h)), ...fmtCounts(h.videos, h.shorts)];
   const tags = [];
@@ -22,10 +22,10 @@ function sessionRowHtml(h) {
   </li>`;
 }
 
-// Tuiles : aujourd'hui, 7 derniers jours (aujourd'hui compris), nombre total de sessions.
+// Tiles: today, last 7 days (today included), total number of sessions.
 function tilesHtml(history) {
   const todayStart = midnightOf(Date.now());
-  const weekStart = midnightOf(todayStart - 6 * DAY_MS + DAY_MS / 2); // DAY_MS / 2 : robuste aux changements d'heure
+  const weekStart = midnightOf(todayStart - 6 * DAY_MS + DAY_MS / 2); // DAY_MS / 2: robust to DST changes
   const tiles = [
     { value: fmtSpent(totalsSince(history, todayStart).ms), label: t('statToday') },
     { value: fmtSpent(totalsSince(history, weekStart).ms), label: t('statsLast7') },
@@ -36,7 +36,7 @@ function tilesHtml(history) {
     .join('');
 }
 
-// Sessions groupées par jour de fin, la plus récente en premier (l'historique est déjà trié).
+// Sessions grouped by end day, most recent first (the history is already sorted).
 function daysHtml(history) {
   const days = Map.groupBy(history, (h) => dayKey(h.endedAt));
   return [...days.values()]

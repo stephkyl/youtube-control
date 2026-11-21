@@ -2,20 +2,20 @@
 
 const { config, MSG, t, plural, modeLabel, esc, midnightOf, fmtSpent, fmtLeft, fmtCounts, totalsSince } = YS;
 
-// --- État ---------------------------------------------------------------------
+// --- State --------------------------------------------------------------------
 let session = null;
 let history = [];
-let renderedKey = null; // évite de reconstruire l'interface à chaque seconde
-let refs = {}; // éléments mis à jour chaque seconde
+let renderedKey = null; // avoids rebuilding the UI every second
+let refs = {}; // elements updated every second
 
 document.documentElement.lang = YS.uiLang;
 document.title = t('extName');
 for (const node of document.querySelectorAll('[data-i18n]')) node.textContent = t(node.dataset.i18n);
 const app = document.getElementById('app');
 
-// --- Textes ---------------------------------------------------------------------
+// --- Text -----------------------------------------------------------------------
 
-// Bilan du jour : sessions terminées depuis minuit + partie déjà écoulée de la session en cours.
+// Today's total: sessions finished since midnight + elapsed part of the running session.
 function todayText(running) {
   const now = Date.now();
   const midnight = midnightOf(now);
@@ -27,7 +27,7 @@ function todayText(running) {
   return t('popupToday', fmtSpent(ms), plural(sessions, 'statSessionsOne', 'statSessionsMany'));
 }
 
-// --- Rendu ----------------------------------------------------------------------
+// --- Rendering ------------------------------------------------------------------
 const footerLinks = () => `
   <div class="links">
     <button type="button" class="link" data-action="stats">${esc(t('popupStats'))}</button>
@@ -40,21 +40,19 @@ const idleHtml = () => `
   <button type="button" class="primary" data-action="open">${esc(t('popupOpen'))}</button>
   ${footerLinks()}`;
 
-// Session « une vidéo » : pas de minuteur, seulement où on en est.
-const oneVideoHtml = () => `
-  <div class="mode">${esc(modeLabel(session.mode))}</div>
-  <p class="big">${esc(t(session.chosenVideo ? 'pillYourVideo' : 'pillChooseVideo'))}</p>
-  <p class="quote">${esc(t('quote', session.intention))}</p>
-  <p class="today" data-ref="today"></p>
-  <button type="button" data-action="end">${esc(t('popupEnd'))}</button>
-  ${footerLinks()}`;
-
-const runningHtml = () => `
-  <div class="mode">${esc(modeLabel(session.mode))}</div>
+// Running session. The top block depends on the type: timer, or (one video) where we stand.
+const timerHtml = () => `
   <div class="eyebrow">${esc(t(session.status === 'overtime' ? 'popupTimeUp' : 'popupTimeLeft'))}</div>
   <p class="big" data-ref="left"></p>
   <p class="muted" data-ref="sub"></p>
-  <div class="bar"><div data-ref="bar"></div></div>
+  <div class="bar"><div data-ref="bar"></div></div>`;
+
+const oneVideoHtml = () => `
+  <p class="big">${esc(t(session.chosenVideo ? 'oneVideoChosen' : 'oneVideoChoose'))}</p>`;
+
+const runningHtml = () => `
+  <div class="mode">${esc(modeLabel(session.mode))}</div>
+  ${session.mode === 'one' ? oneVideoHtml() : timerHtml()}
   <p class="quote">${esc(t('quote', session.intention))}</p>
   <p class="today" data-ref="today"></p>
   <button type="button" data-action="end">${esc(t('popupEnd'))}</button>
@@ -79,8 +77,7 @@ function render() {
 
   if (key !== renderedKey) {
     renderedKey = key;
-    if (!running) app.innerHTML = idleHtml();
-    else app.innerHTML = oneVideo ? oneVideoHtml() : runningHtml();
+    app.innerHTML = running ? runningHtml() : idleHtml();
     refs = Object.fromEntries([...app.querySelectorAll('[data-ref]')].map((node) => [node.dataset.ref, node]));
   }
 
@@ -98,8 +95,8 @@ app.addEventListener('click', (e) => {
   if (action) actions[action]();
 });
 
-// --- Réglages ---------------------------------------------------------------------
-// Un seul réglage pour l'instant : appliqué aussitôt dans les onglets YouTube.
+// --- Settings ---------------------------------------------------------------------
+// A single setting for now: applied immediately in YouTube tabs.
 const radios = [...document.querySelectorAll('input[name="watchSuggestions"]')];
 function showSettings(stored) {
   const { watchSuggestions } = YS.withDefaultSettings(stored);
@@ -109,7 +106,7 @@ for (const radio of radios) {
   radio.addEventListener('change', () => browser.storage.local.set({ settings: { watchSuggestions: radio.value } }));
 }
 
-// --- Données ----------------------------------------------------------------------
+// --- Data -------------------------------------------------------------------------
 browser.storage.local.get(['session', 'history', 'settings']).then((r) => {
   session = r.session ?? null;
   history = r.history ?? [];

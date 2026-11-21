@@ -1,26 +1,26 @@
 'use strict';
 
-// Constantes et utilitaires partagés par tous les scripts de l'extension :
-// arrière-plan, scripts injectés dans YouTube, popup, historique.
+// Constants and helpers shared by all of the extension's scripts:
+// background, scripts injected into YouTube, popup, history page.
 // eslint-disable-next-line no-var
 var YS = (() => {
-  // --- Constantes -------------------------------------------------------------
+  // --- Constants --------------------------------------------------------------
   const config = {
     MIN_DURATION: 1, // minutes
-    MAX_DURATION: 1440, // minutes, 1 jour max
-    MIN_INTENTION: 10, // caractères
+    MAX_DURATION: 1440, // minutes, 1 day max
+    MIN_INTENTION: 10, // characters
     MAX_INTENTION: 200,
-    // 'all' = shorts et vidéos ; 'long' = vidéos longues uniquement ;
-    // 'one' = une seule vidéo, sans limite de temps (pas de durée, endsAt = null).
+    // 'all' = shorts and videos; 'long' = long videos only;
+    // 'one' = a single video, no time limit (no duration, endsAt = null).
     MODES: ['all', 'long', 'one'],
-    // watchSuggestions : 'fit' = suggestions qui tiennent dans la session (la liste raccourcit
-    // sans être complétée) ; 'hide' = aucune suggestion pendant la lecture.
+    // watchSuggestions: 'fit' = suggestions that fit in the session (the list shrinks
+    // without being refilled); 'hide' = no suggestions while watching.
     DEFAULT_SETTINGS: { watchSuggestions: 'fit' },
     YOUTUBE_URLS: ['*://www.youtube.com/*', '*://m.youtube.com/*'],
     STATS_PAGE: 'src/stats.html',
   };
 
-  // Types des messages échangés entre les scripts.
+  // Types of the messages exchanged between scripts.
   const MSG = {
     START_SESSION: 'START_SESSION',
     END_SESSION: 'END_SESSION',
@@ -28,18 +28,18 @@ var YS = (() => {
     VIDEO_ENDED: 'VIDEO_ENDED',
     CLOSE_TAB: 'CLOSE_TAB',
     OPEN_STATS: 'OPEN_STATS',
-    IS_PLAYING: 'IS_PLAYING', // arrière-plan → onglets YouTube
+    IS_PLAYING: 'IS_PLAYING', // background → YouTube tabs
   };
 
-  // --- Données stockées -------------------------------------------------------
+  // --- Stored data ------------------------------------------------------------
   const withDefaultSettings = (s) => ({ ...config.DEFAULT_SETTINGS, ...s });
 
-  // Les identifiants viennent de la page (URL, lecteur) : on n'accepte que le format YouTube.
+  // IDs come from the page (URL, player): only the YouTube format is accepted.
   const VIDEO_ID_RE = /^[A-Za-z0-9_-]{11}$/;
   const isValidVideoId = (id) => typeof id === 'string' && VIDEO_ID_RE.test(id);
 
-  // --- Textes -----------------------------------------------------------------
-  // Traductions : _locales/en (par défaut) et _locales/fr, selon la langue de Firefox.
+  // --- Text -------------------------------------------------------------------
+  // Translations: _locales/en (default) and _locales/fr, depending on Firefox's language.
   const t = (key, ...subs) => browser.i18n.getMessage(key, subs.map(String));
   const plural = (n, oneKey, manyKey) => (n === 1 ? t(oneKey) : t(manyKey, n));
   const MODE_LABELS = { all: 'modeAll', long: 'modeLong', one: 'modeOne' };
@@ -49,7 +49,7 @@ var YS = (() => {
   const esc = (s) =>
     String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
-  // --- Dates (heure locale) ---------------------------------------------------
+  // --- Dates (local time) -----------------------------------------------------
   const DAY_MS = 24 * 60 * 60 * 1000;
   const pad = (n) => String(n).padStart(2, '0');
 
@@ -70,12 +70,12 @@ var YS = (() => {
     const today = midnightOf(Date.now());
     const day = midnightOf(ts);
     if (day === today) return t('dayToday');
-    if (day === midnightOf(today - DAY_MS / 2)) return t('dayYesterday'); // DAY_MS / 2 : robuste aux changements d'heure
+    if (day === midnightOf(today - DAY_MS / 2)) return t('dayYesterday'); // DAY_MS / 2: robust to DST changes
     return new Intl.DateTimeFormat(uiLang, { weekday: 'long', day: 'numeric', month: 'long' }).format(ts);
   }
 
-  // --- Durées et compteurs ----------------------------------------------------
-  // "0 min" uniquement pour une durée nulle ; toute durée positive affiche au moins 1 min.
+  // --- Durations and counts ---------------------------------------------------
+  // "0 min" only for a zero duration; any positive duration shows at least 1 min.
   function fmtSpent(ms) {
     let m = Math.round(Math.max(0, ms) / 60000);
     if (ms > 0 && m === 0) m = 1;
@@ -85,11 +85,11 @@ var YS = (() => {
     return r ? t('hoursMinutesShort', h, pad(r)) : t('hoursShort', h);
   }
 
-  // Temps restant : toujours en minutes, arrondi au-dessus (jamais de compte à rebours en secondes).
+  // Time left: always in minutes, rounded up (never a countdown in seconds).
   const minutesLeft = (ms) => Math.max(1, Math.ceil(ms / 60000));
   const fmtLeft = (ms) => t('minutesShort', minutesLeft(ms));
 
-  // Vidéos et/ou shorts : seulement les compteurs non nuls (les vidéos si les deux sont nuls).
+  // Videos and/or shorts: only non-zero counts (videos if both are zero).
   const countsToShow = (nVideos, nShorts) => ({ videos: nVideos > 0 || nShorts === 0, shorts: nShorts > 0 });
 
   function fmtCounts(nVideos, nShorts) {
@@ -100,12 +100,12 @@ var YS = (() => {
     return out;
   }
 
-  // --- Historique -------------------------------------------------------------
-  // Entrée d'historique : { id, startedAt, endedAt, intention, mode, videos, shorts, endReason }
-  // (videos/shorts = nombres), la plus récente en premier.
+  // --- History ----------------------------------------------------------------
+  // History entry: { id, startedAt, endedAt, intention, mode, videos, shorts, endReason }
+  // (videos/shorts = counts), most recent first.
 
-  // Temps passé et nombre de sessions depuis `from` (ex. minuit) : seule la partie de
-  // chaque session après cet instant compte (session à cheval sur minuit).
+  // Time spent and number of sessions since `from` (e.g. midnight): only the part of
+  // each session after that moment counts (sessions spanning midnight).
   function totalsSince(history, from) {
     const rows = history.filter((h) => h.endedAt > from);
     const ms = rows.reduce((acc, h) => acc + h.endedAt - Math.max(h.startedAt, from), 0);

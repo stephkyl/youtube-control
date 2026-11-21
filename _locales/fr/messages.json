@@ -230,10 +230,10 @@
   "chosenBack": {
     "message": "Revenir à ma vidéo"
   },
-  "pillChooseVideo": {
+  "oneVideoChoose": {
     "message": "Choisis ta vidéo"
   },
-  "pillYourVideo": {
+  "oneVideoChosen": {
     "message": "Ta vidéo"
   },
   "pillLeftOne": {

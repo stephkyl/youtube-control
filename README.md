@@ -1,57 +1,57 @@
-# Session YouTube
+# YouTube Session
 
-Extension Firefox qui transforme YouTube en sessions courtes et intentionnelles.
+Firefox extension that turns YouTube into short, intentional sessions.
 
-- **Sans session, YouTube est fermé.** Pour en ouvrir une : choisir le type de session, une durée (proposée ou libre ; sauf session « une vidéo »), écrire ce qu'on vient faire (10 caractères minimum), puis attendre 10 secondes de réflexion. Si on quitte l'onglet pendant ce temps, le compte à rebours repart de zéro.
-- **Types de session** :
-  - *Shorts et vidéos* : tout est permis, selon les règles ci-dessous.
-  - *Vidéos longues uniquement* : les shorts disparaissent (accueil, recherche, menu, onglets de chaîne). Un short ouvert par lien direct s'ouvre dans le lecteur classique, et il compte comme une vidéo.
-  - *Une vidéo* : pas de durée, mais une seule vidéo (directs compris). On cherche librement ; la première vidéo dont la lecture démarre (hors publicité) devient celle de la session. Les suggestions et la lecture automatique disparaissent, toute autre page YouTube affiche « Tu as déjà choisi ta vidéo » avec un bouton pour y revenir, et la session se termine à la fin de la vidéo. Les shorts sont traités comme en session « vidéos longues ». Si rien n'est lu pendant 30 minutes (choix jamais fait, vidéo en pause, onglet fermé), la session s'arrête, à l'heure de la dernière lecture.
-- **Seules les vidéos qui tiennent dans le temps restant sont affichées** (accueil, recherche, barre latérale, écran de fin). Pour une vidéo déjà entamée, c'est le temps qu'il reste à regarder qui compte.
-- **Une vidéo trop longue ouverte par lien direct** est mise en pause et masquée par un écran « hors session ».
-- **La lecture automatique est désactivée.**
-- **Shorts** : un short n'est jamais coupé. À moins de 2 minutes de la fin, le défilement reste possible : le short suivant est le dernier. Pendant celui-ci, rien n'apparaît en dessous et le défilement est bloqué. Il est lu en entier, même s'il dépasse la session, puis l'écran de fin s'affiche. Si le temps s'écoule avant d'avoir défilé, c'est le short en cours qui devient le dernier.
-- **Fin de session** : un écran de clôture s'affiche avec une animation, l'intention de départ et des statistiques : la durée réelle de la session, le temps total depuis minuit (et le nombre de sessions), et le nombre de vidéos et/ou de shorts lancés. Il n'y a pas de bouton « encore 5 min ». Le lien « Ouvrir une nouvelle session » ramène au formulaire de démarrage complet (intention + temps de réflexion).
-- **Langues** : anglais par défaut, français si Firefox est en français (`_locales/`).
-- Une pastille en bas à gauche indique le temps restant, en minutes (en session « une vidéo » : « Choisis ta vidéo », puis « Ta vidéo »). Au survol, un bouton « Terminer » permet d'arrêter la session, après une confirmation dans la pastille. La popup de l'extension permet aussi de terminer la session plus tôt, sans confirmation.
-- **Historique** : chaque session terminée est enregistrée localement (500 au maximum) avec son intention, sa durée et le nombre de vidéos et de shorts. L'historique, groupé par jour, s'ouvre depuis l'écran de fin ou depuis la popup (« Historique »), et peut y être effacé. Le bilan du jour (écran de fin, popup) est calculé à partir de cet historique.
+- **Without a session, YouTube is closed.** To open one: pick a session type, a duration (preset or custom; not for one-video sessions), write down what you're here to do (at least 10 characters), then wait through 10 seconds of thinking time. Leaving the tab during that time restarts the countdown.
+- **Session types**:
+  - *Shorts & videos*: everything is allowed, following the rules below.
+  - *Long videos only*: shorts disappear (home, search, menu, channel tabs). A short opened from a direct link opens in the classic player and counts as a video.
+  - *One video*: no duration, but a single video (live streams included). You can search freely; the first video whose playback starts (ads excluded) becomes the session's video. Suggestions and autoplay disappear, any other YouTube page shows "You've already picked your video" with a button to go back to it, and the session ends when the video ends. Shorts are handled as in a long-videos session. If nothing plays for 30 minutes (no video chosen, video paused, tab closed), the session stops, at the time of the last playback.
+- **Only videos that fit in the remaining time are shown** (home, search, sidebar, end screen). For a partly watched video, what counts is the time left to watch.
+- **A video that is too long, opened from a direct link,** is paused and covered by an "out of session" screen.
+- **Autoplay is turned off.**
+- **Shorts**: a short is never cut off. Less than 2 minutes before the end, scrolling still works: the next short is the last one. While it plays, nothing appears below it and scrolling is blocked. It plays in full, even past the session, then the end screen shows. If time runs out before scrolling, the current short becomes the last one.
+- **End of session**: a closing screen shows with an animation, the initial intention and stats: the session's actual duration, the total time since midnight (and the number of sessions), and the number of videos and/or shorts started. There is no "5 more minutes" button. The "Start a new session" link leads back to the full start form (intention + thinking time).
+- **Languages**: English by default, French if Firefox is in French (`_locales/`).
+- A pill at the bottom left shows the time left, in minutes (in a one-video session: "Pick your video", then "Your video"). On hover, an "End" button stops the session after a confirmation inside the pill. The extension popup can also end the session early, without confirmation.
+- **History**: each finished session is stored locally (500 at most) with its intention, duration and number of videos and shorts. The history, grouped by day, opens from the end screen or from the popup ("History"), and can be cleared there. Today's total (end screen, popup) is computed from this history.
 
-## Réglages
+## Settings
 
-Dans la popup de l'extension, section repliable « Réglages ». Un changement s'applique aussitôt.
+In the extension popup, collapsible "Settings" section. Changes apply immediately.
 
-- **Suggestions pendant une vidéo** :
-  - *Seulement celles qui tiennent dans la session* (par défaut) : les suggestions trop longues disparaissent au fil de la session, et YouTube n'en charge pas d'autres pour les remplacer.
-  - *Aucune suggestion* : rien à côté, sous ou à la fin de la vidéo.
+- **Suggestions while watching a video**:
+  - *Only those that fit in the session* (default): suggestions that are too long disappear as the session goes on, and YouTube doesn't load others to replace them.
+  - *No suggestions*: nothing beside, below or at the end of the video.
 
-## Installation (développement)
+## Installation (development)
 
-1. Ouvrir `about:debugging#/runtime/this-firefox` dans Firefox.
-2. Cliquer sur **Charger un module complémentaire temporaire…**, puis choisir `manifest.json`.
+1. Open `about:debugging#/runtime/this-firefox` in Firefox.
+2. Click **Load Temporary Add-on…**, then choose `manifest.json`.
 
-Le module reste chargé jusqu'au redémarrage de Firefox.
+The add-on stays loaded until Firefox restarts.
 
-## Règles de temps (sessions minutées)
+## Time rules (timed sessions)
 
-- Le temps est compté à l'horloge : une pause dans une vidéo ne l'arrête pas.
-- Quand le temps est écoulé alors qu'une vidéo est en cours, on la laisse se terminer. Elle dispose au maximum de 30 minutes supplémentaires. Si elle est mise en pause pendant ce temps, la session se termine.
-- Si une vidéo se termine alors qu'il reste moins de 3 minutes, la session s'arrête aussitôt, sans laisser de temps mort.
-- Les directs et les vidéos sans durée lisible restent affichés.
+- Time is wall-clock time: pausing a video doesn't stop it.
+- When time runs out while a video is playing, it is allowed to finish, with at most 30 extra minutes. If it is paused during that time, the session ends.
+- If a video ends with less than 3 minutes left, the session stops right away, without dead time.
+- Live streams and videos without a readable duration stay visible.
 
-## Fichiers
+## Files
 
-- `src/shared.js` : constantes, types de messages et utilitaires communs à tous les scripts (objet `YS`).
-- `src/theme.css` : palette de couleurs commune (variables `--ys-*`).
-- `src/background.js` : état de la session, minuteur, clôture et historique.
-- `src/content/` : scripts injectés dans YouTube, chargés dans cet ordre (objet `YSC`) :
-  - `core.js` : délais et seuils, état partagé, accès au lecteur ;
-  - `styles.js` : styles des écrans et de la pastille ;
-  - `filter.js` : filtrage des suggestions, masquage des Shorts en session « vidéos longues » ;
-  - `shorts.js` : dernier short (masquage de la suite du fil, blocage du défilement) ;
-  - `video.js` : suivi de la vidéo affichée (tient-elle dans le temps restant ?) ;
-  - `overlays.js` : écrans de démarrage, de fin et « hors session » ;
-  - `pill.js` : pastille de temps restant ;
-  - `main.js` : point d'entrée, boucle de rafraîchissement.
-- `src/content.css` : règles de masquage, pilotées par des classes et attributs posés par les scripts.
-- `src/popup.*` : temps restant, bilan du jour, bouton d'arrêt anticipé et réglages.
-- `src/stats.*` : page d'historique des sessions.
+- `src/shared.js`: constants, message types and helpers shared by all scripts (`YS` object).
+- `src/theme.css`: shared color palette (`--ys-*` variables).
+- `src/background.js`: session state, timer, closing and history.
+- `src/content/`: scripts injected into YouTube, loaded in this order (`YSC` object):
+  - `core.js`: delays and thresholds, shared state, player access;
+  - `styles.js`: styles of the screens and the pill;
+  - `filter.js`: suggestion filtering, hiding Shorts in long-videos and one-video sessions;
+  - `shorts.js`: last short (hiding the rest of the feed, blocking scrolling);
+  - `video.js`: tracking the displayed video (does it fit in the remaining time?);
+  - `overlays.js`: start, end, "out of session" and "already picked" screens;
+  - `pill.js`: time-left pill;
+  - `main.js`: entry point, refresh loop.
+- `src/content.css`: hiding rules, driven by classes and attributes set by the scripts.
+- `src/popup.*`: time left, today's total, early stop button and settings.
+- `src/stats.*`: session history page.

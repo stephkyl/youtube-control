@@ -1,20 +1,20 @@
-/* Évite d'apercevoir YouTube avant de savoir si une session est en cours. */
+/* Avoids showing YouTube before we know whether a session is running. */
 html.ysess-pending body {
   visibility: hidden !important;
 }
 
-/* Page verrouillée (pas de session, fin de session, vidéo trop longue). */
+/* Locked page (no session, end of session, video too long). */
 html.ysess-locked,
 html.ysess-locked body {
   overflow: hidden !important;
 }
 
-/* Vidéos qui ne tiennent pas dans le temps restant. */
+/* Videos that don't fit in the remaining time. */
 [data-ysess-hidden] {
   display: none !important;
 }
 
-/* Réglage "aucune suggestion" : rien à côté, sous ou à la fin de la vidéo. */
+/* "No suggestions" setting: nothing beside, below or at the end of the video. */
 html.ysess-hide-related ytd-watch-next-secondary-results-renderer,
 html.ysess-hide-related ytd-watch-flexy #related,
 html.ysess-hide-related ytm-item-section-renderer[section-identifier="related-items"],
@@ -24,29 +24,29 @@ html.ysess-hide-related .ytp-ce-element {
   display: none !important;
 }
 
-/* Réglage "suggestions qui tiennent" : la liste raccourcit sans être complétée. */
+/* "Suggestions that fit" setting: the list shrinks without being refilled. */
 html.ysess-freeze-related ytd-watch-next-secondary-results-renderer ytd-continuation-item-renderer {
   display: none !important;
 }
 
-/* Dernier short : rien en dessous (ni aperçu du suivant, ni flèches), pas de défilement.
-   [data-ysess-after-last] est posé par le script (repérage par position, voir shorts.js). */
+/* Last short: nothing below (no preview of the next one, no arrows), no scrolling.
+   [data-ysess-after-last] is set by the script (position-based detection, see shorts.js). */
 [data-ysess-after-last],
 html.ysess-last-short #navigation-button-down,
 html.ysess-last-short #navigation-button-up {
-  /* visibility seule ne suffit pas : un descendant peut se réafficher (visibility: visible),
-     ce qui laissait une silhouette grise. opacity masque tout le sous-arbre sans changer la
-     mise en page, donc on voit simplement le fond de la page (clair ou sombre). */
+  /* visibility alone is not enough: a descendant can show itself again (visibility: visible),
+     which left a grey silhouette. opacity hides the whole subtree without changing the
+     layout, so you simply see the page background (light or dark). */
   visibility: hidden !important;
   opacity: 0 !important;
   pointer-events: none !important;
 }
-/* Ne pas changer l'overflow du conteneur ici : Firefox le reconstruit et remet le fil
-   tout en haut. Le défilement est bloqué côté script (événements + position verrouillée). */
+/* Do not change the container's overflow here: Firefox rebuilds it and sends the feed
+   back to the top. Scrolling is blocked by the script (events + locked position). */
 
-/* Session « vidéos longues » : tout ce qui mène à un short disparaît (vignettes, étagères,
-   résultats de recherche, menu latéral, barre mobile). Repérage par le lien, plus stable
-   que les noms d'éléments de YouTube. Les filtres/onglets « Shorts » sont marqués par le script. */
+/* Sessions without shorts ('long', 'one'): everything leading to a short disappears (thumbnails,
+   shelves, search results, side menu, mobile bar). Detected by the link, more stable than
+   YouTube's element names. The "Shorts" filters/tabs are marked by the script. */
 html.ysess-no-shorts :is(
   ytd-rich-section-renderer,
   ytd-reel-shelf-renderer,

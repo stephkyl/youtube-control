@@ -1,4 +1,4 @@
-/* Thème sombre : palette commune (src/theme.css). Thème clair : valeurs propres à cette page. */
+/* Dark theme: shared palette (src/theme.css). Light theme: values specific to this page. */
 :root {
   color-scheme: light dark;
   --bg: var(--ys-bg);

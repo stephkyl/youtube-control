@@ -1,19 +1,19 @@
 'use strict';
 
-// Dernier short de la session.
-// À moins de 2 min de la fin, le défilement reste possible : le short suivant sur lequel on
-// arrive est le dernier. Pendant celui-ci, rien n'apparaît en dessous, le défilement est
-// bloqué, et la session se termine dès qu'il est fini.
+// The session's last short.
+// Less than 2 min before the end, scrolling still works: the next short you land on is
+// the last one. While it plays, nothing appears below it, scrolling is blocked, and the
+// session ends as soon as it is over.
 YSC.shorts = (() => {
   const { MSG } = YS;
   const { T, state, isRunning, isOvertime, remainingMs, isOnLastShort, pageType, getMainVideo, send } = YSC;
   const html = document.documentElement;
   const AFTER_LAST = 'data-ysess-after-last';
 
-  // 'off'   : rien à masquer.
-  // 'armed' : moins de 2 min, le prochain short sera le dernier → on masque dès maintenant
-  //           tout ce qui vient après lui, pour qu'il n'y ait aucun aperçu en arrivant dessus.
-  // 'last'  : on est sur le dernier short → tout ce qui suit est masqué, défilement bloqué.
+  // 'off'   : nothing to hide.
+  // 'armed' : less than 2 min, the next short will be the last → hide everything after it
+  //           right now, so there is no preview when landing on it.
+  // 'last'  : on the last short → everything after it is hidden, scrolling is blocked.
   function maskState() {
     if (!isRunning() || pageType() !== 'shorts') return 'off';
     if (isOnLastShort()) return 'last';
@@ -28,12 +28,12 @@ YSC.shorts = (() => {
     send({ type: MSG.END_SESSION, reason: 'shorts' });
   }
 
-  // --- Repérage dans le fil ---------------------------------------------------
+  // --- Finding the current item in the feed -----------------------------------
 
-  // Élément du fil qui contient le short en cours, repéré sans dépendre des noms d'éléments
-  // de YouTube : on remonte depuis la vidéo jusqu'à un élément haut d'au moins un demi-écran
-  // dont un frère du même type est empilé juste en dessous (le short suivant). Les calques
-  // du lecteur (contrôles, etc.) se superposent au lieu de s'empiler : ils sont ignorés.
+  // Feed item holding the current short, found without relying on YouTube's element names:
+  // walk up from the video to an element at least half a screen tall that has a sibling
+  // of the same type stacked right below it (the next short). Player layers (controls,
+  // etc.) overlap instead of stacking: they are ignored.
   function findCurrentReelItem() {
     const minHeight = window.innerHeight * 0.5;
     for (let node = getMainVideo('shorts'); node?.parentElement && node !== document.body; node = node.parentElement) {
@@ -57,10 +57,10 @@ YSC.shorts = (() => {
     return document.scrollingElement;
   }
 
-  // --- Masquage de la suite du fil --------------------------------------------
+  // --- Hiding the rest of the feed --------------------------------------------
 
-  // Masque les éléments du fil situés après le short en cours, en laissant `keep` visibles
-  // (1 en mode 'armed' : le short suivant, sur lequel on va arriver).
+  // Hides the feed items after the current short, leaving `keep` of them visible
+  // (1 in 'armed' state: the next short, the one we are about to land on).
   function hideReelsAfter(keep) {
     const item = findCurrentReelItem();
     if (!item) return;
@@ -74,7 +74,7 @@ YSC.shorts = (() => {
     for (const el of document.querySelectorAll(`[${AFTER_LAST}]`)) el.removeAttribute(AFTER_LAST);
   }
 
-  // Appelé à chaque rafraîchissement : le fil peut s'allonger entre deux passages.
+  // Called on every refresh: the feed can grow between two passes.
   function applyMask() {
     const mask = maskState();
     if (mask === 'off') showAllReels();
@@ -82,11 +82,11 @@ YSC.shorts = (() => {
     setLastShortMode(mask === 'last');
   }
 
-  // --- Blocage du défilement --------------------------------------------------
+  // --- Scroll blocking --------------------------------------------------------
 
-  // Verrou de position : si le fil défile malgré tout (barre de défilement, script de YouTube…),
-  // on le remet là où il était. Au début, on suit la position pour laisser l'aimantation
-  // (scroll-snap) finir de caler le short.
+  // Position lock: if the feed scrolls anyway (scrollbar, YouTube script…), put it back
+  // where it was. At first, follow the position to let scroll-snap finish settling
+  // the short.
   let scrollLock = null; // { el, top, since }
   const inLastShortMode = () => html.classList.contains('ysess-last-short');
 
@@ -109,7 +109,7 @@ YSC.shorts = (() => {
     true
   );
 
-  // Molette, tactile, clavier : pas de passage au short suivant (sauf dans le panneau des commentaires).
+  // Wheel, touch, keyboard: no moving to the next short (except in the comments panel).
   const blockFeedScroll = (e) => {
     if (!inLastShortMode()) return;
     const target = e.target instanceof Element ? e.target : null;
@@ -132,12 +132,12 @@ YSC.shorts = (() => {
     true
   );
 
-  // Fin du dernier short : on l'arrête juste avant qu'il ne reparte en boucle.
+  // End of the last short: stop it just before it loops.
   document.addEventListener(
     'timeupdate',
     (e) => {
       const vs = state.video;
-      // Tant que la vidéo n'est pas confirmée (checked), <video> peut encore porter le short précédent.
+      // Until the video is confirmed (checked), <video> may still hold the previous short.
       if (!e.isTrusted || !vs.lastShort || !vs.checked || vs.finished || pageType() !== 'shorts') return;
       const video = getMainVideo('shorts');
       if (e.target !== video || !Number.isFinite(video.duration)) return;

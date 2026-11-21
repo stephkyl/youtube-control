@@ -1,8 +1,8 @@
 'use strict';
 
-// Styles des écrans plein page et de la pastille, injectés dans leur Shadow DOM.
-// Les couleurs viennent de src/theme.css (variables --ys-*, héritées à travers le Shadow DOM).
-// `mix(couleur, %)` : version translucide d'une couleur de la palette.
+// Styles of the full-page screens and the pill, injected into their Shadow DOM.
+// Colors come from src/theme.css (--ys-* variables, inherited through the Shadow DOM).
+// `mix(color, %)`: translucent version of a palette color.
 YSC.styles = (() => {
   const mix = (color, pct) => `color-mix(in srgb, var(--ys-${color}) ${pct}%, transparent)`;
 
@@ -41,7 +41,7 @@ YSC.styles = (() => {
     .lead.small { font-size: 14px; margin-bottom: 20px; }
     .quote { font-size: 16px; line-height: 1.5; color: var(--ys-quote); margin: 0 0 22px; font-style: italic; overflow-wrap: anywhere; }
 
-    /* Formulaire de démarrage */
+    /* Start form */
     .field { margin-bottom: 22px; }
     .label { display: block; font-size: 13px; font-weight: 600; color: var(--ys-label); margin-bottom: 10px; }
     .modes { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
@@ -80,7 +80,7 @@ YSC.styles = (() => {
     textarea::placeholder { color: var(--ys-placeholder); }
     .hint { font-size: 12px; color: var(--ys-faint); margin-top: 8px; min-height: 1.2em; }
 
-    /* Boutons */
+    /* Buttons */
     .primary {
       font: inherit; font-size: 15px; font-weight: 600; width: 100%; padding: 14px 18px;
       border: 0; border-radius: 12px; cursor: pointer; transition: opacity .2s, transform .1s;
@@ -94,7 +94,7 @@ YSC.styles = (() => {
     }
     .screen-end .primary { background: var(--ys-mint); }
 
-    /* Compte à rebours */
+    /* Countdown */
     .ring { position: relative; width: 120px; height: 120px; margin: 4px auto 18px; }
     .ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
     .ring circle { fill: none; stroke-width: 6; }
@@ -103,7 +103,7 @@ YSC.styles = (() => {
     .ring span { position: absolute; inset: 0; display: grid; place-items: center; font-size: 34px; font-weight: 600; font-variant-numeric: tabular-nums; }
     .ring.done span { color: var(--ys-accent); }
 
-    /* Écran de fin : coche, statistiques */
+    /* End screen: check mark, stats */
     .check { width: 104px; height: 104px; margin: 0 auto 18px; display: block; }
     .check-circle { fill: ${mix('mint', 8)}; stroke: var(--ys-mint); stroke-width: 5; stroke-dasharray: 327; stroke-dashoffset: 327;
       transform-origin: center; transform: rotate(-90deg); animation: fill 1s cubic-bezier(.65,0,.35,1) .15s forwards, glow 3.5s ease-in-out 1.6s infinite; }
@@ -149,10 +149,10 @@ YSC.styles = (() => {
     button:hover { border-color: rgba(255,255,255,.45); }
     button:focus-visible { outline: 2px solid var(--ys-accent); outline-offset: 1px; }
     .yes { background: var(--ys-accent); border-color: var(--ys-accent); color: var(--ys-accent-ink); }
-    /* Bouton « Terminer » : visible au survol ou au clavier seulement. */
+    /* "End" button: visible on hover or keyboard focus only. */
     .end { display: none; }
     .pill:hover .end, .pill:focus-within .end { display: inline-block; }
-    /* Confirmation : remplace le contenu de la pastille. */
+    /* Confirmation: replaces the pill's content. */
     .confirm { display: none; align-items: center; gap: 6px; }
     .confirming .confirm { display: inline-flex; }
     .confirming .txt, .confirming .end, .confirming .dot { display: none !important; }

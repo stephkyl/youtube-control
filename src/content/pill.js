@@ -1,7 +1,7 @@
 'use strict';
 
-// Pastille en bas à gauche : temps restant ; au survol, bouton « Terminer » ;
-// au clic, confirmation sur place.
+// Pill at the bottom left: time left; on hover, an "End" button;
+// on click, inline confirmation.
 YSC.pill = (() => {
   const { MSG, t, plural, esc, minutesLeft } = YS;
   const { T, state, isRunning, isOvertime, isOneVideo, isOnLastShort, remainingMs, send } = YSC;
@@ -12,7 +12,7 @@ YSC.pill = (() => {
     const host = document.createElement('div');
     host.setAttribute('data-ysess', 'pill');
     host.style.cssText = 'all:initial;position:fixed;left:16px;bottom:16px;z-index:2147483646;';
-    // Entrée ou Espace sur les boutons ne doivent pas déclencher les raccourcis de YouTube.
+    // Enter or Space on the buttons must not trigger YouTube's shortcuts.
     for (const type of ['keydown', 'keyup', 'keypress']) host.addEventListener(type, (e) => e.stopPropagation());
     const root = host.attachShadow({ mode: 'closed' });
     root.innerHTML = `<style>${YSC.styles.pill}</style>
@@ -49,7 +49,7 @@ YSC.pill = (() => {
   }
 
   function text() {
-    if (isOneVideo()) return t(state.session.chosenVideo ? 'pillYourVideo' : 'pillChooseVideo');
+    if (isOneVideo()) return t(state.session.chosenVideo ? 'oneVideoChosen' : 'oneVideoChoose');
     if (isOnLastShort()) return t('lastShort');
     if (isOvertime()) return t('lastVideo');
     return plural(minutesLeft(remainingMs()), 'pillLeftOne', 'pillLeftMany');
