@@ -3,49 +3,51 @@
 // Pill at the bottom left: time left; on hover, an "End" button;
 // on click, inline confirmation.
 YSC.pill = (() => {
-  const { MSG, t, plural, esc, minutesLeft } = YS;
+  const { MSG, t, plural, minutesLeft, h } = YS;
   const { T, state, isRunning, isOvertime, isOneVideo, isOnLastShort, remainingMs, send } = YSC;
 
   let pill = null; // { host, box, txt }
 
   function create() {
-    const host = document.createElement('div');
-    host.setAttribute('data-ysess', 'pill');
+    const host = h('div', { 'data-ysess': 'pill' });
     host.style.cssText = 'all:initial;position:fixed;left:16px;bottom:16px;z-index:2147483646;';
     // Enter or Space on the buttons must not trigger YouTube's shortcuts.
     for (const type of ['keydown', 'keyup', 'keypress']) host.addEventListener(type, (e) => e.stopPropagation());
-    const root = host.attachShadow({ mode: 'closed' });
-    root.innerHTML = `<style>${YSC.styles.pill}</style>
-      <div class="pill">
-        <span class="dot"></span>
-        <span class="txt"></span>
-        <button type="button" class="end">${esc(t('pillEnd'))}</button>
-        <span class="confirm">
-          <span>${esc(t('pillConfirm'))}</span>
-          <button type="button" class="yes">${esc(t('pillYes'))}</button>
-          <button type="button" class="no">${esc(t('pillNo'))}</button>
-        </span>
-      </div>`;
-    document.documentElement.appendChild(host);
-
-    const box = root.querySelector('.pill');
     let timer = null;
     const closeConfirm = () => {
       clearTimeout(timer);
       box.classList.remove('confirming');
     };
-    root.querySelector('.end').addEventListener('click', () => {
+    const openConfirm = () => {
       box.classList.add('confirming');
-      root.querySelector('.no').focus();
+      no.focus();
       clearTimeout(timer);
       timer = setTimeout(closeConfirm, T.PILL_CONFIRM_MS);
-    });
-    root.querySelector('.no').addEventListener('click', closeConfirm);
-    root.querySelector('.yes').addEventListener('click', () => {
+    };
+    const confirmEnd = () => {
       closeConfirm();
       send({ type: MSG.END_SESSION, reason: 'manual' });
-    });
-    return { host, box, txt: root.querySelector('.txt') };
+    };
+
+    const txt = h('span', { class: 'txt' });
+    const no = h('button', { type: 'button', class: 'no', onclick: closeConfirm }, t('pillNo'));
+    const box = h(
+      'div',
+      { class: 'pill' },
+      h('span', { class: 'dot' }),
+      txt,
+      h('button', { type: 'button', class: 'end', onclick: openConfirm }, t('pillEnd')),
+      h(
+        'span',
+        { class: 'confirm' },
+        h('span', null, t('pillConfirm')),
+        h('button', { type: 'button', class: 'yes', onclick: confirmEnd }, t('pillYes')),
+        no
+      )
+    );
+    host.attachShadow({ mode: 'closed' }).append(h('style', null, YSC.styles.pill), box);
+    document.documentElement.appendChild(host);
+    return { host, box, txt };
   }
 
   function text() {

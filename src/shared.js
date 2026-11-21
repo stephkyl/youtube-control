@@ -46,8 +46,24 @@ var YS = (() => {
   const modeLabel = (mode) => t(MODE_LABELS[mode]);
   const uiLang = browser.i18n.getUILanguage();
 
-  const esc = (s) =>
-    String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+  // --- DOM --------------------------------------------------------------------
+  // Builds elements without ever parsing HTML (no innerHTML): strings are always inserted
+  // as text, so data from the page or the user (intention…) can never become markup.
+  // Attributes: `on<event>` adds a listener; null/undefined/false skip the attribute, true sets
+  // it empty (pass String(bool) for aria-* values). Children: strings, numbers, nodes or
+  // (nested) arrays; null/undefined/false are skipped.
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+  function fill(el, attrs, children) {
+    for (const [name, value] of Object.entries(attrs ?? {})) {
+      if (value === null || value === undefined || value === false) continue;
+      if (name.startsWith('on')) el.addEventListener(name.slice(2), value);
+      else el.setAttribute(name, value === true ? '' : String(value));
+    }
+    el.append(...children.flat(Infinity).filter((c) => c !== null && c !== undefined && c !== false));
+    return el;
+  }
+  const h = (tag, attrs, ...children) => fill(document.createElement(tag), attrs, children);
+  const svg = (tag, attrs, ...children) => fill(document.createElementNS(SVG_NS, tag), attrs, children);
 
   // --- Dates (local time) -----------------------------------------------------
   const DAY_MS = 24 * 60 * 60 * 1000;
@@ -115,7 +131,7 @@ var YS = (() => {
   return {
     config, MSG,
     withDefaultSettings, isValidVideoId,
-    t, plural, modeLabel, uiLang, esc,
+    t, plural, modeLabel, uiLang, h, svg,
     DAY_MS, dayKey, midnightOf, fmtClock, fmtDayLabel,
     fmtSpent, minutesLeft, fmtLeft, countsToShow, fmtCounts,
     totalsSince,

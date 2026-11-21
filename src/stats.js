@@ -1,6 +1,6 @@
 'use strict';
 
-const { t, plural, modeLabel, esc, dayKey, midnightOf, DAY_MS, fmtClock, fmtDayLabel, fmtSpent, fmtCounts, totalsSince } = YS;
+const { t, plural, modeLabel, h, dayKey, midnightOf, DAY_MS, fmtClock, fmtDayLabel, fmtSpent, fmtCounts, totalsSince } = YS;
 
 document.documentElement.lang = YS.uiLang;
 document.title = t('statsPageTitle');
@@ -11,54 +11,52 @@ const spent = (h) => Math.max(0, h.endedAt - h.startedAt);
 const sum = (rows, fn) => rows.reduce((acc, h) => acc + fn(h), 0);
 
 // One session: start time, duration, videos/shorts, tags, then the intention.
-function sessionRowHtml(h) {
-  const meta = [fmtClock(h.startedAt), fmtSpent(spent(h)), ...fmtCounts(h.videos, h.shorts)];
+function sessionRow(entry) {
+  const meta = [fmtClock(entry.startedAt), fmtSpent(spent(entry)), ...fmtCounts(entry.videos, entry.shorts)];
   const tags = [];
-  if (h.mode !== 'all') tags.push(modeLabel(h.mode));
-  if (h.endReason === 'manual') tags.push(t('histEarly'));
-  return `<li class="hist-row">
-    <div class="hist-meta">${esc(meta.join(' · '))}${tags.map((x) => ` <span class="hist-tag">${esc(x)}</span>`).join('')}</div>
-    <div class="hist-intent">${esc(t('quote', h.intention))}</div>
-  </li>`;
+  if (entry.mode !== 'all') tags.push(modeLabel(entry.mode));
+  if (entry.endReason === 'manual') tags.push(t('histEarly'));
+  return h(
+    'li',
+    { class: 'hist-row' },
+    h('div', { class: 'hist-meta' }, meta.join(' · '), tags.map((tag) => [' ', h('span', { class: 'hist-tag' }, tag)])),
+    h('div', { class: 'hist-intent' }, t('quote', entry.intention))
+  );
 }
 
 // Tiles: today, last 7 days (today included), total number of sessions.
-function tilesHtml(history) {
+function tiles(history) {
   const todayStart = midnightOf(Date.now());
   const weekStart = midnightOf(todayStart - 6 * DAY_MS + DAY_MS / 2); // DAY_MS / 2: robust to DST changes
-  const tiles = [
+  return [
     { value: fmtSpent(totalsSince(history, todayStart).ms), label: t('statToday') },
     { value: fmtSpent(totalsSince(history, weekStart).ms), label: t('statsLast7') },
-    { value: String(history.length), label: t(history.length === 1 ? 'statsSessionOne' : 'statsSessionMany') },
-  ];
-  return tiles
-    .map((tile) => `<div class="tile"><div class="tile-value">${esc(tile.value)}</div><div class="tile-label">${esc(tile.label)}</div></div>`)
-    .join('');
+    { value: history.length, label: t(history.length === 1 ? 'statsSessionOne' : 'statsSessionMany') },
+  ].map((tile) => h('div', { class: 'tile' }, h('div', { class: 'tile-value' }, tile.value), h('div', { class: 'tile-label' }, tile.label)));
 }
 
 // Sessions grouped by end day, most recent first (the history is already sorted).
-function daysHtml(history) {
-  const days = Map.groupBy(history, (h) => dayKey(h.endedAt));
-  return [...days.values()]
-    .map((rows) => {
-      const summary = [
-        fmtSpent(sum(rows, spent)),
-        plural(rows.length, 'statSessionsOne', 'statSessionsMany'),
-        ...fmtCounts(sum(rows, (h) => h.videos), sum(rows, (h) => h.shorts)),
-      ];
-      return `<section class="day">
-        <h2><span>${esc(fmtDayLabel(rows[0].endedAt))}</span><span class="day-sum">${esc(summary.join(' · '))}</span></h2>
-        <ul class="hist-list">${rows.map(sessionRowHtml).join('')}</ul>
-      </section>`;
-    })
-    .join('');
+function days(history) {
+  return [...Map.groupBy(history, (entry) => dayKey(entry.endedAt)).values()].map((rows) => {
+    const summary = [
+      fmtSpent(sum(rows, spent)),
+      plural(rows.length, 'statSessionsOne', 'statSessionsMany'),
+      ...fmtCounts(sum(rows, (entry) => entry.videos), sum(rows, (entry) => entry.shorts)),
+    ];
+    return h(
+      'section',
+      { class: 'day' },
+      h('h2', null, h('span', null, fmtDayLabel(rows[0].endedAt)), h('span', { class: 'day-sum' }, summary.join(' · '))),
+      h('ul', { class: 'hist-list' }, rows.map(sessionRow))
+    );
+  });
 }
 
 function render(history = []) {
   $('empty').hidden = history.length > 0;
   $('clear').hidden = history.length === 0;
-  $('tiles').innerHTML = tilesHtml(history);
-  $('days').innerHTML = daysHtml(history);
+  $('tiles').replaceChildren(...tiles(history));
+  $('days').replaceChildren(...days(history));
 }
 
 browser.storage.local.get('history').then(({ history }) => render(history));

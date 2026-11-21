@@ -4,7 +4,7 @@
 // session, other page while the video of a one-video session has already been chosen.
 // Each lives in a closed Shadow DOM: isolated from YouTube's CSS and unreadable by its scripts.
 YSC.overlays = (() => {
-  const { config, MSG, t, plural, modeLabel, esc, isValidVideoId, fmtSpent, fmtLeft, midnightOf, countsToShow, totalsSince } = YS;
+  const { config, MSG, t, plural, modeLabel, h, svg, isValidVideoId, fmtSpent, fmtLeft, midnightOf, countsToShow, totalsSince } = YS;
   const { T, state, send } = YSC;
   const html = document.documentElement;
 
@@ -28,10 +28,8 @@ YSC.overlays = (() => {
       host.addEventListener(type, (e) => e.stopPropagation());
     }
     const root = host.attachShadow({ mode: 'closed' });
-    root.innerHTML = `<style>${YSC.styles.overlay}</style>`;
-    const screen = document.createElement('div');
-    screen.className = `screen screen-${view}`;
-    root.appendChild(screen);
+    const screen = h('div', { class: `screen screen-${view}` });
+    root.append(h('style', null, YSC.styles.overlay), screen);
     html.appendChild(host);
     html.classList.add('ysess-locked');
     state.overlay = { host, view, cleanup: builders[view](screen) || null };
@@ -71,8 +69,6 @@ YSC.overlays = (() => {
 
   function buildStart(screen) {
     const form = { mode: null, duration: null, customDuration: '', intention: '' }; // no default value
-    const $ = (sel) => screen.querySelector(sel);
-    const $$ = (sel) => [...screen.querySelectorAll(sel)];
     let timer = null;
     let onVisibility = null;
 
@@ -82,137 +78,176 @@ YSC.overlays = (() => {
       if (onVisibility) document.removeEventListener('visibilitychange', onVisibility);
       onVisibility = null;
     };
-
-    const modeButton = (mode) => `
-      <button type="button" class="mode" data-mode="${mode}" aria-pressed="${mode === form.mode}">
-        <strong>${esc(modeLabel(mode))}</strong>
-        <small>${esc(t(MODE_DESCRIPTIONS[mode]))}</small>
-      </button>`;
-    const presetChip = (d) => `
-      <button type="button" class="chip" data-d="${d}" aria-pressed="${d === form.duration && !form.customDuration}">${esc(t('minutesShort', d))}</button>`;
+    const press = (buttons, pressed) => {
+      for (const b of buttons) b.setAttribute('aria-pressed', String(b === pressed));
+    };
 
     function renderForm() {
       stopTimer();
-      screen.innerHTML = `
-        <div class="card">
-          <div class="eyebrow">${esc(t('startEyebrow'))}</div>
-          <h1>${esc(t('startTitle'))}</h1>
-          <p class="lead">${esc(t('startLead'))}</p>
-          <div class="field">
-            <div class="label">${esc(t('startModeLabel'))}</div>
-            <div class="modes">${config.MODES.map(modeButton).join('')}</div>
-          </div>
-          <div class="field" id="duration-field">
-            <div class="label">${esc(t('startDurationLabel'))}</div>
-            <div class="chips">
-              ${DURATION_PRESETS.map(presetChip).join('')}
-              <label class="chip custom">
-                <input type="number" id="custom" inputmode="numeric" min="${config.MIN_DURATION}" max="${config.MAX_DURATION}" step="1"
-                  placeholder="${esc(t('startCustomPlaceholder'))}" aria-label="${esc(t('startCustomLabel'))}">
-                <span>min</span>
-              </label>
-            </div>
-          </div>
-          <div class="field">
-            <label class="label" for="intent">${esc(t('startIntentionLabel'))}</label>
-            <textarea id="intent" rows="2" maxlength="${config.MAX_INTENTION}" placeholder="${esc(t('startIntentionPlaceholder'))}"></textarea>
-            <div class="hint" id="hint"></div>
-          </div>
-          <button type="button" class="primary" id="go" disabled>${esc(t('startCommit'))}</button>
-        </div>`;
+      const hint = h('div', { class: 'hint' });
+      const go = h('button', { type: 'button', class: 'primary', disabled: true, onclick: renderConfirm }, t('startCommit'));
 
-      const intentInput = $('#intent');
-      const customInput = $('#custom');
-      const customChip = $('.chip.custom');
-      intentInput.value = form.intention;
+      const modeButtons = config.MODES.map((mode) =>
+        h(
+          'button',
+          {
+            type: 'button',
+            class: 'mode',
+            'aria-pressed': String(mode === form.mode),
+            onclick: (e) => {
+              form.mode = mode;
+              press(modeButtons, e.currentTarget);
+              update();
+            },
+          },
+          h('strong', null, modeLabel(mode)),
+          h('small', null, t(MODE_DESCRIPTIONS[mode]))
+        )
+      );
+
+      const presetChips = DURATION_PRESETS.map((d) =>
+        h(
+          'button',
+          {
+            type: 'button',
+            class: 'chip',
+            'aria-pressed': String(d === form.duration && !form.customDuration),
+            onclick: (e) => {
+              form.duration = d;
+              form.customDuration = '';
+              customInput.value = '';
+              customChip.classList.remove('active');
+              press(presetChips, e.currentTarget);
+              update();
+            },
+          },
+          t('minutesShort', d)
+        )
+      );
+
+      // Custom duration: typing a value deselects the preset durations.
+      const customInput = h('input', {
+        type: 'number',
+        inputmode: 'numeric',
+        min: config.MIN_DURATION,
+        max: config.MAX_DURATION,
+        step: 1,
+        placeholder: t('startCustomPlaceholder'),
+        'aria-label': t('startCustomLabel'),
+        oninput: () => {
+          form.customDuration = customInput.value.trim();
+          form.duration = parseCustomDuration(form.customDuration);
+          customChip.classList.toggle('active', !!form.customDuration);
+          press(presetChips, null);
+          update();
+        },
+      });
       customInput.value = form.customDuration;
+      const customChip = h('label', { class: 'chip custom' }, customInput, h('span', null, 'min'));
       customChip.classList.toggle('active', !!form.customDuration);
 
-      const update = () => {
-        $('#duration-field').hidden = !needsDuration(form.mode);
-        const { hint, canSubmit } = validateForm(form);
-        $('#hint').textContent = hint;
-        $('#go').disabled = !canSubmit;
-      };
-      const press = (buttons, pressed) => {
-        for (const b of buttons) b.setAttribute('aria-pressed', String(b === pressed));
-      };
+      const durationField = h(
+        'div',
+        { class: 'field' },
+        h('div', { class: 'label' }, t('startDurationLabel')),
+        h('div', { class: 'chips' }, presetChips, customChip)
+      );
 
-      for (const btn of $$('.mode')) {
-        btn.addEventListener('click', () => {
-          form.mode = btn.dataset.mode;
-          press($$('.mode'), btn);
+      const intentInput = h('textarea', {
+        id: 'intent',
+        rows: 2,
+        maxlength: config.MAX_INTENTION,
+        placeholder: t('startIntentionPlaceholder'),
+        oninput: () => {
+          form.intention = intentInput.value;
           update();
-        });
-      }
-      for (const chip of $$('.chip[data-d]')) {
-        chip.addEventListener('click', () => {
-          form.duration = Number(chip.dataset.d);
-          form.customDuration = '';
-          customInput.value = '';
-          customChip.classList.remove('active');
-          press($$('.chip[data-d]'), chip);
-          update();
-        });
-      }
-      // Custom duration: typing a value deselects the preset durations.
-      customInput.addEventListener('input', () => {
-        form.customDuration = customInput.value.trim();
-        form.duration = parseCustomDuration(form.customDuration);
-        customChip.classList.toggle('active', !!form.customDuration);
-        press($$('.chip[data-d]'), null);
-        update();
+        },
       });
-      intentInput.addEventListener('input', () => {
-        form.intention = intentInput.value;
-        update();
-      });
-      $('#go').addEventListener('click', renderConfirm);
+      intentInput.value = form.intention;
+
+      function update() {
+        durationField.hidden = !needsDuration(form.mode);
+        const { hint: text, canSubmit } = validateForm(form);
+        hint.textContent = text;
+        go.disabled = !canSubmit;
+      }
+
+      screen.replaceChildren(
+        h(
+          'div',
+          { class: 'card' },
+          h('div', { class: 'eyebrow' }, t('startEyebrow')),
+          h('h1', null, t('startTitle')),
+          h('p', { class: 'lead' }, t('startLead')),
+          h('div', { class: 'field' }, h('div', { class: 'label' }, t('startModeLabel')), h('div', { class: 'modes' }, modeButtons)),
+          durationField,
+          h('div', { class: 'field' }, h('label', { class: 'label', for: 'intent' }, t('startIntentionLabel')), intentInput, hint),
+          go
+        )
+      );
       update();
     }
 
     function renderConfirm() {
       stopTimer();
-      screen.innerHTML = `
-        <div class="card center">
-          <div class="eyebrow">${esc(modeLabel(form.mode))}</div>
-          <h1>${esc(confirmTitle(form))}</h1>
-          <p class="quote">${esc(t('quote', form.intention.trim()))}</p>
-          <div class="ring">
-            <svg viewBox="0 0 120 120" aria-hidden="true">
-              <circle class="ring-bg" cx="60" cy="60" r="52"/>
-              <circle class="ring-fg" cx="60" cy="60" r="52" style="animation-duration:${T.COUNTDOWN_S}s"/>
-            </svg>
-            <span id="count">${T.COUNTDOWN_S}</span>
-          </div>
-          <p class="lead small" id="msg">${esc(t('confirmPrompt'))}</p>
-          <button type="button" class="primary" id="start" disabled>${esc(t('confirmWait'))}</button>
-          <button type="button" class="link" id="back">${esc(t('confirmBack'))}</button>
-        </div>`;
+      const count = h('span', null, T.COUNTDOWN_S);
+      const ring = h(
+        'div',
+        { class: 'ring' },
+        svg(
+          'svg',
+          { viewBox: '0 0 120 120', 'aria-hidden': 'true' },
+          svg('circle', { class: 'ring-bg', cx: 60, cy: 60, r: 52 }),
+          svg('circle', { class: 'ring-fg', cx: 60, cy: 60, r: 52, style: `animation-duration:${T.COUNTDOWN_S}s` })
+        ),
+        count
+      );
+      const msg = h('p', { class: 'lead small' }, t('confirmPrompt'));
+      const start = h(
+        'button',
+        {
+          type: 'button',
+          class: 'primary',
+          disabled: true,
+          onclick: () => {
+            start.disabled = true;
+            const { mode, duration, intention } = form;
+            send({ type: MSG.START_SESSION, durationMin: needsDuration(mode) ? duration : null, intention, mode });
+          },
+        },
+        t('confirmWait')
+      );
+
+      screen.replaceChildren(
+        h(
+          'div',
+          { class: 'card center' },
+          h('div', { class: 'eyebrow' }, modeLabel(form.mode)),
+          h('h1', null, confirmTitle(form)),
+          h('p', { class: 'quote' }, t('quote', form.intention.trim())),
+          ring,
+          msg,
+          start,
+          h('button', { type: 'button', class: 'link', onclick: renderForm }, t('confirmBack'))
+        )
+      );
 
       let left = T.COUNTDOWN_S;
       timer = setInterval(() => {
         left -= 1;
-        $('#count').textContent = String(Math.max(0, left));
+        count.textContent = String(Math.max(0, left));
         if (left > 0) return;
         stopTimer();
-        $('#start').disabled = false;
-        $('#start').textContent = t('confirmStart');
-        $('#msg').textContent = t('confirmReady');
-        $('.ring').classList.add('done');
+        start.disabled = false;
+        start.textContent = t('confirmStart');
+        msg.textContent = t('confirmReady');
+        ring.classList.add('done');
       }, 1000);
       // Leaving the tab during the thinking time resets the countdown.
       onVisibility = () => {
         if (document.hidden) renderConfirm();
       };
       document.addEventListener('visibilitychange', onVisibility);
-
-      $('#back').addEventListener('click', renderForm);
-      $('#start').addEventListener('click', () => {
-        $('#start').disabled = true;
-        const { mode, duration, intention } = form;
-        send({ type: MSG.START_SESSION, durationMin: needsDuration(mode) ? duration : null, intention, mode });
-      });
     }
 
     renderForm();
@@ -234,61 +269,68 @@ YSC.overlays = (() => {
     const show = countsToShow(nVideos, nShorts);
     if (show.videos) tiles.push({ value: String(nVideos), label: t(nVideos === 1 ? 'statVideo' : 'statVideos') });
     if (show.shorts) tiles.push({ value: String(nShorts), label: t(nShorts === 1 ? 'statShort' : 'statShorts') });
-    return tiles
-      .map(
-        (tile) => `<div class="tile">
-          <div class="tile-value">${esc(tile.value)}</div>
-          <div class="tile-label">${esc(tile.label)}</div>
-          ${tile.sub ? `<div class="tile-sub">${esc(tile.sub)}</div>` : ''}
-        </div>`
+    return tiles.map((tile) =>
+      h(
+        'div',
+        { class: 'tile' },
+        h('div', { class: 'tile-value' }, tile.value),
+        h('div', { class: 'tile-label' }, tile.label),
+        tile.sub && h('div', { class: 'tile-sub' }, tile.sub)
       )
-      .join('');
+    );
   }
 
-  function particlesHtml(count = 18) {
+  function particles(count = 18) {
     return Array.from({ length: count }, () => {
       const left = Math.round(Math.random() * 100);
       const delay = (Math.random() * 4).toFixed(2);
       const duration = (6 + Math.random() * 6).toFixed(2);
       const size = (3 + Math.random() * 5).toFixed(1);
-      return `<span class="p" style="left:${left}%;animation-delay:${delay}s;animation-duration:${duration}s;width:${size}px;height:${size}px"></span>`;
-    }).join('');
+      const style = `left:${left}%;animation-delay:${delay}s;animation-duration:${duration}s;width:${size}px;height:${size}px`;
+      return h('span', { class: 'p', style });
+    });
   }
 
   function buildEnd(screen) {
     const s = state.session;
     const title = t(s.endReason === 'manual' ? 'endEarly' : 'endTitle');
+    const tiles = h('div', { class: 'tiles fade d2' });
+    const button = (cls, label, onclick) => h('button', { type: 'button', class: `${cls} fade d5`, onclick }, label);
 
-    screen.innerHTML = `
-      <div class="particles" aria-hidden="true">${particlesHtml()}</div>
-      <div class="card center end">
-        <svg class="check" viewBox="0 0 120 120" aria-hidden="true">
-          <circle class="check-circle" cx="60" cy="60" r="52"/>
-          <path class="check-mark" d="M38 62 L54 77 L84 45"/>
-        </svg>
-        <h1 class="fade d1">${esc(title)}</h1>
-        <div class="tiles fade d2" id="tiles"></div>
-        <p class="quote fade d3">${esc(t('endIntention', s.intention))}</p>
-        <p class="lead fade d4">${esc(t('endNext'))}</p>
-        <button type="button" class="primary fade d5" id="close">${esc(t('endClose'))}</button>
-        <button type="button" class="link fade d5" id="again">${esc(t('endAgain'))}</button>
-        <button type="button" class="link fade d5" id="all-history">${esc(t('endAllHistory'))}</button>
-      </div>`;
-
-    const $ = (sel) => screen.querySelector(sel);
-    $('#close').addEventListener('click', () => send({ type: MSG.CLOSE_TAB }));
-    // Leads to the start form (intention + thinking time), not straight to YouTube.
-    $('#again').addEventListener('click', () => {
-      state.dismissedEndFor = s.id;
-      YSC.refresh();
-    });
-    $('#all-history').addEventListener('click', () => send({ type: MSG.OPEN_STATS }));
+    screen.replaceChildren(
+      h('div', { class: 'particles', 'aria-hidden': 'true' }, particles()),
+      h(
+        'div',
+        { class: 'card center end' },
+        svg(
+          'svg',
+          { class: 'check', viewBox: '0 0 120 120', 'aria-hidden': 'true' },
+          svg('circle', { class: 'check-circle', cx: 60, cy: 60, r: 52 }),
+          svg('path', { class: 'check-mark', d: 'M38 62 L54 77 L84 45' })
+        ),
+        h('h1', { class: 'fade d1' }, title),
+        tiles,
+        h('p', { class: 'quote fade d3' }, t('endIntention', s.intention)),
+        h('p', { class: 'lead fade d4' }, t('endNext')),
+        button('primary', t('endClose'), () => send({ type: MSG.CLOSE_TAB })),
+        // Leads to the start form (intention + thinking time), not straight to YouTube.
+        button('link', t('endAgain'), () => {
+          state.dismissedEndFor = s.id;
+          YSC.refresh();
+        }),
+        button('link', t('endAllHistory'), () => send({ type: MSG.OPEN_STATS }))
+      )
+    );
 
     // Tiles appear after 1.45 s (animation): reading storage has time to finish.
     browser.storage.local.get('history').then(({ history }) => {
-      $('#tiles').innerHTML = endTiles(s, history ?? []);
+      tiles.replaceChildren(...endTiles(s, history ?? []));
     });
   }
+
+  // Simple centered card: out-of-session and already-chosen screens.
+  const simpleCard = (eyebrow, title, lead, ...extra) =>
+    h('div', { class: 'card center' }, h('div', { class: 'eyebrow' }, eyebrow), h('h1', null, title), h('p', { class: 'lead' }, lead), extra);
 
   // --- Video out of session ---------------------------------------------------
   function buildTooLong(screen) {
@@ -296,12 +338,7 @@ YSC.overlays = (() => {
     const detail = YSC.isOvertime()
       ? t('tooLongOvertime')
       : t('tooLongDetail', fmtLeft(tooLong.videoMs), fmtLeft(tooLong.remainingMs));
-    screen.innerHTML = `
-      <div class="card center">
-        <div class="eyebrow">${esc(t('tooLongEyebrow'))}</div>
-        <h1>${esc(t('tooLongTitle'))}</h1>
-        <p class="lead">${esc(detail)}</p>
-      </div>`;
+    screen.replaceChildren(simpleCard(t('tooLongEyebrow'), t('tooLongTitle'), detail));
   }
 
   // --- Video already chosen (one-video session) ---------------------------------
@@ -309,14 +346,8 @@ YSC.overlays = (() => {
     // Value read from storage: checked again before building the URL.
     const id = state.session.chosenVideo;
     const url = isValidVideoId(id) ? `/watch?v=${id}` : '/';
-    screen.innerHTML = `
-      <div class="card center">
-        <div class="eyebrow">${esc(modeLabel('one'))}</div>
-        <h1>${esc(t('chosenTitle'))}</h1>
-        <p class="lead">${esc(t('chosenLead'))}</p>
-        <button type="button" class="primary" id="back">${esc(t('chosenBack'))}</button>
-      </div>`;
-    screen.querySelector('#back').addEventListener('click', () => location.assign(url));
+    const back = h('button', { type: 'button', class: 'primary', onclick: () => location.assign(url) }, t('chosenBack'));
+    screen.replaceChildren(simpleCard(modeLabel('one'), t('chosenTitle'), t('chosenLead'), back));
   }
 
   return { show };
